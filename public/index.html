@@ -174,7 +174,8 @@ html[data-theme=dark] .postit.arch::before{background:rgba(20,26,42,.55)}
 .postit.imgnote.arch::before{display:block}
 .lightbox{position:fixed;inset:0;z-index:9999;background:rgba(10,15,30,.82);display:flex;align-items:center;justify-content:center;cursor:zoom-out}
 .lightbox img{max-width:92vw;max-height:92vh;border-radius:4px;box-shadow:0 20px 60px rgba(0,0,0,.5);background:#fff}
-.postit .rz{position:absolute;right:0;bottom:0;width:20px;height:20px;opacity:0;transition:opacity .15s;background:linear-gradient(135deg,transparent 52%,rgba(20,33,61,.55) 52%,rgba(20,33,61,.55) 60%,transparent 60%,transparent 72%,rgba(20,33,61,.55) 72%,rgba(20,33,61,.55) 80%,transparent 80%);border-bottom-right-radius:inherit}
+.postit .rz{display:none;position:absolute;right:0;bottom:0;width:20px;height:20px;opacity:0;transition:opacity .15s;background:linear-gradient(135deg,transparent 52%,rgba(20,33,61,.55) 52%,rgba(20,33,61,.55) 60%,transparent 60%,transparent 72%,rgba(20,33,61,.55) 72%,rgba(20,33,61,.55) 80%,transparent 80%);border-bottom-right-radius:inherit}
+.zcanvas .postit .rz{display:block}
 .postit:hover .rz,.postit.rsz .rz{opacity:1}
 .postit .rz,.postit .rz:hover{cursor:nwse-resize!important}
 .postit.rsz{transition:none;transform:rotate(0deg)}
@@ -367,7 +368,7 @@ function buildNote(L,id){
     function mv(ev){
       var sc=L.scale||1,dx=(ev.clientX-sx)/sc,dy=(ev.clientY-sy)/sc;
       if(!moved&&Math.hypot(dx*sc,dy*sc)>5){moved=true;el._drag=true;el.classList.add('drag')}
-      if(moved){el.style.left=(ox+dx+(L.ox||0))+'px';el.style.top=(oy+dy+(L.oy||0))+'px'}
+      if(moved){var nx=ox+dx+(L.ox||0),ny=oy+dy+(L.oy||0);if(!L.pan){nx=Math.max(0,nx);ny=Math.max(0,ny)}el.style.left=nx+'px';el.style.top=ny+'px'}
     }
     function up(){
       el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);
@@ -617,7 +618,7 @@ function openLevel(cfg){
     var em=document.createElement('div');em.className='empty';em.textContent='Vide pour l’instant. Ajoute une idée, ou dis-moi « note : … » dans le chat.';
     cv.appendChild(em);pa.appendChild(row);pa.appendChild(cv);
     L.canvas=cv;L.empty=em;L.title=q('.ztitle');
-    row.appendChild(mkZoomCtl(L));wheelZoom(cv,L);
+    row.appendChild(mkZoomCtl(L));wheelZoom(cv,L,true);
     ab.onclick=function(){create(Object.assign({parent:cfg.key},slotSub(cfg.key)),L)};
     ab2.onclick=function(){create(Object.assign({parent:cfg.key,leaf:true},slotSub(cfg.key)),L)};
     ab3.onclick=function(){fi.value='';fi.click()};
@@ -697,13 +698,15 @@ function mkZoomCtl(L){
   L.setScale=set;
   return box;
 }
-function wheelZoom(el,L){
-  el.addEventListener('scroll',function(){if(el.scrollLeft||el.scrollTop){el.scrollLeft=0;el.scrollTop=0}});
+function wheelZoom(el,L,pan){
+  if(pan){L.pan=true;el.addEventListener('scroll',function(){if(el.scrollLeft||el.scrollTop){el.scrollLeft=0;el.scrollTop=0}})}
   el.addEventListener('wheel',function(e){
+    if(e.ctrlKey||e.metaKey){e.preventDefault();L.setScale(L.scale*Math.exp(-e.deltaY*0.01));return}
+    if(!pan)return;
     e.preventDefault();
-    if(e.ctrlKey||e.metaKey){L.setScale(L.scale*Math.exp(-e.deltaY*0.01));return}
     var sc=L.scale||1;panBy(L,-e.deltaX/sc,-e.deltaY/sc);
   },{passive:false});
+  if(!pan)return;
   el.addEventListener('pointerdown',function(e){
     if(e.button>0||(e.target!==el&&!e.target.classList.contains('empty')))return;
     var sx=e.clientX,sy=e.clientY,ox=L.ox||0,oy=L.oy||0,sc=L.scale||1;
