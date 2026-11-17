@@ -63,6 +63,8 @@ jobs:
           # Pas de "grep -q" dans un pipe avec pipefail : SIGPIPE ferait échouer l'étape.
           unzip -l release/Tableau-mac-arm64.zip > list-mac.txt
           unzip -l release/Tableau-windows-x64.zip > list-win.txt
+          echo "--- mac: fichiers app"; grep -E "Resources/app" list-mac.txt | head -10 || true
+          echo "--- win: fichiers app"; grep -E "resources/app" list-win.txt | head -10 || true
           grep "Tableau/Tableau.app/Contents/Resources/app/main.js" list-mac.txt
           grep "Tableau/Windows/resources/app/main.js" list-win.txt
 
