@@ -60,8 +60,11 @@ jobs:
             echo "== $z"
             unzip -l "$z" | grep -E "Tableau/index.html|Tableau/donnees/boards/main.json"
           done
-          unzip -l release/Tableau-mac-arm64.zip | grep -q "Tableau/Tableau.app/Contents/Resources/app/main.js"
-          unzip -l release/Tableau-windows-x64.zip | grep -q "Tableau/Windows/resources/app/main.js"
+          # Pas de "grep -q" dans un pipe avec pipefail : SIGPIPE ferait échouer l'étape.
+          unzip -l release/Tableau-mac-arm64.zip > list-mac.txt
+          unzip -l release/Tableau-windows-x64.zip > list-win.txt
+          grep "Tableau/Tableau.app/Contents/Resources/app/main.js" list-mac.txt
+          grep "Tableau/Windows/resources/app/main.js" list-win.txt
 
       - name: Publier la Release
         env:
