@@ -163,6 +163,17 @@ html[data-theme=dark] .postit.arch::before{background:rgba(20,26,42,.55)}
 .tools:has(.arm) button:not(.arm){display:none}
 .mdel.arm,.trow .dl.arm,.fdel.arm{white-space:nowrap}
 .postit .tools .arm,.postit .tools .arm:hover{color:#fff;background:#c0392b}
+
+/* images dans les post-its */
+.postit.imgnote{height:auto;width:var(--w,240px);padding:8px;background-image:none;background-color:#fff!important;border-radius:3px;box-shadow:0 1px 2px rgba(20,33,61,.3),0 10px 16px -8px rgba(20,33,61,.35)}
+.postit.imgnote img{display:block;width:100%;height:auto;border-radius:2px;pointer-events:none;-webkit-user-drag:none;user-select:none}
+.postit.imgnote .txt,.postit.imgnote .badge,.postit.imgnote .b-ed,.postit.imgnote .b-col{display:none}
+.postit:not(.imgnote) .b-size{display:none}
+.postit.imgnote::before{display:none}
+.postit.imgnote.arch::before{display:block}
+.lightbox{position:fixed;inset:0;z-index:9999;background:rgba(10,15,30,.82);display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+.lightbox img{max-width:92vw;max-height:92vh;border-radius:4px;box-shadow:0 20px 60px rgba(0,0,0,.5);background:#fff}
+.zcanvas.dropping{outline:3px dashed rgba(20,33,61,.5);outline-offset:-6px}
 </style>
 </head>
 <body>
@@ -298,11 +309,12 @@ function slotSub(pid){
 /* ---------- notes (post-its) ---------- */
 function buildNote(L,id){
   var el=document.createElement('div');el.className='postit';el.dataset.id=id;
-  el.innerHTML='<div class="tools"><button class="b-ed" title="Modifier">✎</button><button class="b-col" title="Changer de thème">◐</button><button class="b-arch" title="Archiver">✓</button><button class="b-del" title="Supprimer">×</button></div><div class="txt"></div><div class="badge"></div>';
+  el.innerHTML='<div class="tools"><button class="b-ed" title="Modifier">✎</button><button class="b-col" title="Changer de thème">◐</button><button class="b-size" title="Changer la taille">⤢</button><button class="b-arch" title="Archiver">✓</button><button class="b-del" title="Supprimer">×</button></div><div class="txt"></div><div class="badge"></div>';
   var t=$('.txt',el);
   $('.b-ed',el).onclick=function(e){e.stopPropagation();startEdit(el,id)};
   $('.b-col',el).onclick=function(e){e.stopPropagation();var n=notes.get(id);if(!n)return;var i=KEYS.indexOf(n.color);save(id,{color:KEYS[(i+1)%KEYS.length]})};
   $('.b-arch',el).onclick=function(e){e.stopPropagation();var n=notes.get(id);if(!n)return;save(id,{arch:n.arch?0:Date.now()})};
+  $('.b-size',el).onclick=function(e){e.stopPropagation();var n=notes.get(id);if(!n)return;var S=[160,240,360,520],i=S.indexOf(n.w||240);save(id,{w:S[(i+1)%S.length]})};
   var del=$('.b-del',el);
   del.onclick=function(e){
     e.stopPropagation();
@@ -336,11 +348,80 @@ function buildNote(L,id){
       if(moved){
         var x=Math.round(parseFloat(el.style.left)),y=Math.round(parseFloat(el.style.top));
         el._drag=false;save(id,{x:x,y:y});
-      }else{var nn=notes.get(id);if(nn&&nn.leaf)startEdit(el,id);else openNote(id,el)}
+      }else{var nn=notes.get(id);if(nn&&nn.img)openLightbox(nn);else if(nn&&nn.leaf)startEdit(el,id);else openNote(id,el)}
     }
     el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
   });
   return el;
+}
+
+/* ---------- images ---------- */
+function fileToImg(file){
+  return new Promise(function(ok,ko){
+    var u=URL.createObjectURL(file),im=new Image();
+    im.onload=function(){
+      var W=im.naturalWidth,H=im.naturalHeight,out=null;
+      [[1400,.85],[1000,.72],[700,.6]].some(function(p){
+        var k=Math.min(1,p[0]/Math.max(W,H)),c=document.createElement('canvas');
+        c.width=Math.max(1,Math.round(W*k));c.height=Math.max(1,Math.round(H*k));
+        var g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);
+        out={url:c.toDataURL('image/jpeg',p[1]),ar:c.height/c.width};
+        return out.url.length<2500000;
+      });
+      URL.revokeObjectURL(u);ok(out);
+    };
+    im.onerror=function(){URL.revokeObjectURL(u);ko(new Error('image illisible'))};
+    im.src=u;
+  });
+}
+var imgJitter=0;
+function addImages(files,L,pos){
+  var list=Array.prototype.filter.call(files||[],function(f){return /^image\//.test(f.type)});
+  if(!list.length){toast('Aucune image reconnue');return}
+  list.forEach(function(f,i){
+    fileToImg(f).then(function(r){
+      var ref=col?col.doc():null,id=ref?ref.id:'l'+Math.random().toString(36).slice(2,9);
+      var p;
+      if(pos)p={x:Math.max(0,Math.round(pos.x-120+i*28)),y:Math.max(0,Math.round(pos.y-60+i*28))};
+      else{p=slotSub(L.parentId);imgJitter=(imgJitter+1)%7;p={x:p.x+(imgJitter*13%40)-10,y:p.y+(imgJitter*29%40)-10}}
+      var n={id:id,text:'',color:active,parent:L.parentId,frame:null,x:p.x,y:p.y,ts:Date.now(),img:r.url,ar:Math.round(r.ar*1000)/1000,w:240};
+      notes.set(id,n);rerender();
+      if(ref)ref.set(strip(n)).catch(function(){toast('Enregistrement impossible')});
+    }).catch(function(){toast('Image non ajoutée')});
+  });
+}
+document.addEventListener('paste',function(e){
+  var L=levels[levels.length-1];if(!L||L.kind!=='note')return;
+  var cd=e.clipboardData;if(!cd||!cd.files||!cd.files.length)return;
+  if(!Array.prototype.some.call(cd.files,function(f){return /^image\//.test(f.type)}))return;
+  e.preventDefault();addImages(cd.files,L,null);
+});
+function noteBox(L,n){
+  var w=n.img?(n.w||240):150,h;
+  if(n.img)h=w*(n.ar||.75)+16;
+  else if(n.leaf){var el=L.els.get(n.id),r=el&&el.getBoundingClientRect();h=r&&r.width?r.height*w/r.width:110}
+  else h=150;
+  return{w:w+(n.img?16:0),h:h};
+}
+function arrange(L){
+  var list=[];notes.forEach(function(n){if((n.parent||null)===L.parentId&&!n.del)list.push(n)});
+  if(!list.length)return;
+  list.sort(function(a,b){return (Math.round(a.y/80)-Math.round(b.y/80))||(a.x-b.x)});
+  var W=830,G=18,x=24,y=24,rowH=0;
+  list.forEach(function(n){
+    var b=noteBox(L,n);
+    if(x>24&&x+b.w>W){x=24;y+=rowH+G;rowH=0}
+    save(n.id,{x:Math.round(x),y:Math.round(y),rot:0});
+    x+=b.w+G;rowH=Math.max(rowH,b.h);
+  });
+}
+function openLightbox(n){
+  var d=document.createElement('div');d.className='lightbox';
+  var im=document.createElement('img');im.src=n.img;d.appendChild(im);
+  function close(){d.remove();document.removeEventListener('keydown',kd,true)}
+  function kd(e){if(e.key==='Escape'){e.stopPropagation();close()}}
+  d.onclick=close;document.addEventListener('keydown',kd,true);
+  document.body.appendChild(d);
 }
 function startEdit(el,id){
   var t=$('.txt',el);
@@ -357,7 +438,8 @@ function startEdit(el,id){
 function hash(id){var h=0;for(var i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))>>>0;return h}
 function updateNote(el,n){
   var c=col_(n.color);
-  el.style.backgroundColor=c[0];el.style.setProperty('--rot',(((hash(n.id)%50)-25)/10)+'deg');
+  el.style.backgroundColor=c[0];el.style.setProperty('--rot',(n.rot!=null?n.rot:(((hash(n.id)%50)-25)/10))+'deg');
+  if(n.img){el.classList.add('imgnote');el.style.setProperty('--w',(n.w||240)+'px');var im=$('img',el);if(!im){im=document.createElement('img');im.draggable=false;el.insertBefore(im,$('.txt',el))}if(im.getAttribute('src')!==n.img)im.src=n.img}
   if(!el._drag){el.style.left=n.x+'px';el.style.top=n.y+'px'}
   if(!el.classList.contains('editing')){var t=$('.txt',el);if(t.textContent!==n.text)t.textContent=n.text}
   el.classList.toggle('arch',!!n.arch);el.classList.toggle('leaf',!!n.leaf);var ba=$('.b-arch',el);if(ba)ba.title=n.arch?'Désarchiver':'Archiver';
@@ -489,7 +571,10 @@ function openLevel(cfg){
     var row=document.createElement('div');row.className='zrow';
     var ab=document.createElement('button');ab.className='addbtn';ab.textContent='+ Idée';ab.title='Nouveau post-it, qu\u2019on pourra ouvrir à son tour';
     var ab2=document.createElement('button');ab2.className='addbtn';ab2.textContent='+ Note simple';ab2.title='Une note sans niveau en dessous : on écrit dedans, rien de plus';
-    row.appendChild(ab);row.appendChild(ab2);row.appendChild(mkLegend('Thème :'));
+    var ab3=document.createElement('button');ab3.className='addbtn';ab3.textContent='+ Image';ab3.title='Ajouter une image (ou coller / glisser-déposer une image ici)';
+    var fi=document.createElement('input');fi.type='file';fi.accept='image/*';fi.multiple=true;fi.style.display='none';
+    var ab4=document.createElement('button');ab4.className='addbtn';ab4.textContent='⊞ Ranger';ab4.title='Aligner proprement tout ce qui est dans ce post-it';
+    row.appendChild(ab);row.appendChild(ab2);row.appendChild(ab3);row.appendChild(fi);row.appendChild(ab4);row.appendChild(mkLegend('Thème :'));
     var cv=document.createElement('div');cv.className='zcanvas';
     var em=document.createElement('div');em.className='empty';em.textContent='Vide pour l’instant. Ajoute une idée, ou dis-moi « note : … » dans le chat.';
     cv.appendChild(em);pa.appendChild(row);pa.appendChild(cv);
@@ -497,6 +582,18 @@ function openLevel(cfg){
     row.appendChild(mkZoomCtl(L));wheelZoom(cv,L);
     ab.onclick=function(){create(Object.assign({parent:cfg.key},slotSub(cfg.key)),L)};
     ab2.onclick=function(){create(Object.assign({parent:cfg.key,leaf:true},slotSub(cfg.key)),L)};
+    ab3.onclick=function(){fi.value='';fi.click()};
+    fi.onchange=function(){addImages(fi.files,L,null)};
+    ab4.onclick=function(){arrange(L)};
+    cv.addEventListener('dragover',function(e){if(e.dataTransfer&&Array.prototype.some.call(e.dataTransfer.types||[],function(t){return t==='Files'})){e.preventDefault();cv.classList.add('dropping')}});
+    cv.addEventListener('dragleave',function(){cv.classList.remove('dropping')});
+    cv.addEventListener('drop',function(e){
+      cv.classList.remove('dropping');
+      if(!e.dataTransfer||!e.dataTransfer.files||!e.dataTransfer.files.length)return;
+      e.preventDefault();
+      var r=cv.getBoundingClientRect(),sc=L.scale||1;
+      addImages(e.dataTransfer.files,L,{x:(e.clientX-r.left)/sc,y:(e.clientY-r.top)/sc});
+    });
   }else{
     L.ovl=document.createElement('div');L.ovl.className='ovl';pa.appendChild(L.ovl);
     var zt=q('.ztitle');zt.contentEditable='true';zt.title='Cliquer pour renommer ce cadre';
@@ -669,7 +766,7 @@ buildBoard();
 /* ---------- corbeille ---------- */
 function trashRoots(){
   var out=[];
-  trash.forEach(function(n,i){if(n.grp===i||!n.grp)out.push({kind:'Post-it',id:n.grp||i,text:n.text||'(vide)',del:n.del})});
+  trash.forEach(function(n,i){if(n.grp===i||!n.grp)out.push({kind:'Post-it',id:n.grp||i,text:n.text||(n.img?'🖼 (image)':'(vide)'),del:n.del})});
   mtrash.forEach(function(m,i){if(m.grp===i)out.push({kind:'Réunion du '+(m.date||'?'),id:i,text:m.text||'(vide)',del:m.del})});
   boards.forEach(function(d,id){if(d.del)out.push({kind:'Tableau',id:'board:'+id,text:'« '+d.name+' » ('+(d.frames||[]).length+' cadre(s))',del:d.del})});
   out.sort(function(a,b){return b.del-a.del});
