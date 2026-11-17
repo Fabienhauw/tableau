@@ -1,0 +1,28 @@
+TABLEAU - LISEZ-MOI
+===================
+
+LANCER L'APPLICATION
+
+  Mac :
+    Ouvre Tableau.app.
+    La premiere fois : clic droit sur Tableau.app > Ouvrir.
+    (ou, dans un terminal :  xattr -cr Tableau.app )
+
+  Windows :
+    Ouvre Windows\Tableau.exe.
+    Si SmartScreen s'affiche : Informations complementaires > Executer quand meme.
+
+GARDE CE DOSSIER COMPLET, AU MEME ENDROIT
+
+  L'application, index.html et le dossier donnees/ doivent rester ensemble,
+  dans le meme dossier "Tableau". Ne les separe pas et ne deplace pas l'application seule.
+
+TES NOTES
+
+  Tes notes sont dans le dossier donnees/ et ne quittent jamais ton ordinateur.
+  Ne partage jamais ce dossier.
+
+SI TU LE METS DANS ONEDRIVE
+
+  Clic droit sur le dossier Tableau > Toujours conserver sur cet appareil.
+  (Sinon OneDrive peut vider les fichiers et l'application ne les trouvera plus.)

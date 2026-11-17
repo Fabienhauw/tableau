@@ -46,6 +46,7 @@ jobs:
             cp -R "build/$1/Tableau.app" "stage/Tableau/$2" 2>/dev/null || cp -R "build/$1" "stage/Tableau/$2"
             cp public/index.html stage/Tableau/index.html
             cp -R template/donnees stage/Tableau/donnees
+            cp template/LISEZ-MOI.txt stage/Tableau/LISEZ-MOI.txt
             (cd stage && zip -ry "$GITHUB_WORKSPACE/release/$3" Tableau)
           }
           assemble Tableau-darwin-arm64 Tableau.app Tableau-mac-arm64.zip
@@ -58,7 +59,7 @@ jobs:
           set -euo pipefail
           for z in release/*.zip; do
             echo "== $z"
-            unzip -l "$z" | grep -E "Tableau/index.html|Tableau/donnees/boards/main.json"
+            unzip -l "$z" | grep -E "Tableau/index.html|Tableau/LISEZ-MOI.txt|Tableau/donnees/boards/main.json"
           done
           # Pas de "grep -q" dans un pipe avec pipefail : SIGPIPE ferait échouer l'étape.
           unzip -l release/Tableau-mac-arm64.zip > list-mac.txt
