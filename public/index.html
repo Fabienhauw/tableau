@@ -93,8 +93,9 @@ h1[contenteditable=true]{outline:2px dashed rgba(20,33,61,.35);outline-offset:4p
 h1{cursor:text}
 .topbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
 .tbtn{border:1px solid #d9d4c9;background:#fff;color:#14213D;border-radius:999px;padding:6px 14px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
-.tbtn:hover{background:#f0eeea}
-select.tbtn{padding-right:8px}
+.tbtn:hover{background-color:#f0eeea}
+select.tbtn{-webkit-appearance:none;appearance:none;padding-right:32px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%2314213D' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 13px center;background-size:10px 6px}
+html[data-theme=dark] select.tbtn{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23eceff6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 13px center;background-size:10px 6px}
 .zctl{display:inline-flex;align-items:center;gap:2px;border:1px solid #d9d4c9;background:#fff;border-radius:999px;padding:2px}
 .zctl button{border:none;background:transparent;color:#14213D;width:28px;height:26px;border-radius:999px;font-size:16px;cursor:pointer}
 .zctl button:hover{background:#f0eeea}
@@ -120,8 +121,8 @@ select.tbtn{padding-right:8px}
 html[data-theme=dark]{color-scheme:dark}
 html[data-theme=dark] body,html[data-theme=dark] #app,html[data-theme=dark] .trashp{background:#141a2a;color:#eceff6}
 html[data-theme=dark] .frame{background:#1d2538;border-color:#2b3550}
-html[data-theme=dark] .tbtn,html[data-theme=dark] .zctl{background:#1d2538;color:#eceff6;border-color:#33405c}
-html[data-theme=dark] .tbtn:hover,html[data-theme=dark] .zctl button:hover{background:#27324b}
+html[data-theme=dark] .tbtn,html[data-theme=dark] .zctl{background-color:#1d2538;color:#eceff6;border-color:#33405c}
+html[data-theme=dark] .tbtn:hover,html[data-theme=dark] .zctl button:hover{background-color:#27324b}
 html[data-theme=dark] .zctl button{color:#eceff6}
 html[data-theme=dark] .chip.on{border-color:#eceff6}
 html[data-theme=dark] .back,html[data-theme=dark] .msynb,html[data-theme=dark] .trow .rs,html[data-theme=dark] .tab.on{background:#eceff6;color:#14213D}
