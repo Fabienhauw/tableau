@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    env:
+      ELECTRON_VERSION: 45.2.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build avec @electron/packager
+        run: |
+          set -euo pipefail
+          # Pas d'asar : main.js cherche index.html et donnees/ dans le dossier parent de l'app.
+          npx --yes @electron/packager@latest app Tableau \
+            --platform=darwin --arch=arm64,x64 \
+            --electron-version="$ELECTRON_VERSION" \
+            --icon=icons/icon.icns --out=build --overwrite
+          # Pas d'--icon pour Windows : rcedit demanderait Wine sur macOS (l'icône de fenêtre vient de icon.png).
+          npx --yes @electron/packager@latest app Tableau \
+            --platform=win32 --arch=x64 \
+            --electron-version="$ELECTRON_VERSION" \
+            --out=build --overwrite
+          ls build
+
+      - name: Assemblage des zips
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          assemble() { # $1 = dossier packager, $2 = nom dans le zip (Tableau.app ou Windows), $3 = nom du zip
+            rm -rf stage && mkdir -p stage/Tableau
+            cp -R "build/$1/Tableau.app" "stage/Tableau/$2" 2>/dev/null || cp -R "build/$1" "stage/Tableau/$2"
+            cp public/index.html stage/Tableau/index.html
+            cp -R template/donnees stage/Tableau/donnees
+            (cd stage && zip -ry "$GITHUB_WORKSPACE/release/$3" Tableau)
+          }
+          assemble Tableau-darwin-arm64 Tableau.app Tableau-mac-arm64.zip
+          assemble Tableau-darwin-x64   Tableau.app Tableau-mac-x64.zip
+          assemble Tableau-win32-x64    Windows     Tableau-windows-x64.zip
+          ls -lh release
+
+      - name: Vérification de la structure
+        run: |
+          set -euo pipefail
+          for z in release/*.zip; do
+            echo "== $z"
+            unzip -l "$z" | grep -E "Tableau/index.html|Tableau/donnees/boards/main.json"
+          done
+          unzip -l release/Tableau-mac-arm64.zip | grep -q "Tableau/Tableau.app/Contents/Resources/app/main.js"
+          unzip -l release/Tableau-windows-x64.zip | grep -q "Tableau/Windows/resources/app/main.js"
+
+      - name: Publier la Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/*.zip \
+            --title "Tableau $GITHUB_REF_NAME" \
+            --generate-notes

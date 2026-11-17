@@ -1,0 +1,15 @@
+# Données personnelles : ne JAMAIS publier
+/donnees/
+*.migre
+
+# Fichiers locaux / builds
+_ancien/
+Tableau - copie vierge/
+Tableau.app/
+Windows/
+node_modules/
+dist/
+.DS_Store
+
+# index.html local de travail (la version publique est dans public/)
+/index.html
