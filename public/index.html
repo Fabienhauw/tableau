@@ -166,8 +166,8 @@ html[data-theme=dark] .postit.arch::before{background:rgba(20,26,42,.55)}
 .postit .tools .arm,.postit .tools .arm:hover{color:#fff;background:#c0392b}
 
 /* images dans les post-its */
-.postit.imgnote{height:auto;width:var(--w,240px);padding:8px;background-image:none;background-color:#fff!important;border-radius:3px;box-shadow:0 1px 2px rgba(20,33,61,.3),0 10px 16px -8px rgba(20,33,61,.35)}
-.postit.imgnote img{display:block;width:100%;height:auto;border-radius:2px;pointer-events:none;-webkit-user-drag:none;user-select:none}
+.postit.imgnote{height:auto;width:var(--w,240px);padding:0;background-image:none;background-color:transparent!important;border-radius:3px;box-shadow:none}
+.postit.imgnote img{display:block;width:100%;height:auto;border-radius:3px;box-shadow:0 2px 8px rgba(20,33,61,.3);pointer-events:none;-webkit-user-drag:none;user-select:none}
 .postit.imgnote .txt,.postit.imgnote .badge,.postit.imgnote .b-ed,.postit.imgnote .b-col{display:none}
 .postit:not(.imgnote) .b-size{display:none}
 .postit.imgnote::before{display:none}
@@ -426,11 +426,11 @@ document.addEventListener('paste',function(e){
 });
 function noteBox(L,n){
   var w=n.img?(n.w||240):(n.w||150),h;
-  if(n.img)h=w*(n.ar||.75)+16;
+  if(n.img)h=w*(n.ar||.75);
   else if(n.h)h=n.h;
   else if(n.leaf){var el=L.els.get(n.id),r=el&&el.getBoundingClientRect();h=r&&r.width?r.height*w/r.width:110}
   else h=150;
-  return{w:w+(n.img?16:0),h:h};
+  return{w:w,h:h};
 }
 function arrange(L){
   var list=[];notes.forEach(function(n){if((n.parent||null)===L.parentId&&!n.del)list.push(n)});
