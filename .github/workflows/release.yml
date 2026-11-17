@@ -29,12 +29,12 @@ jobs:
           npx --yes @electron/packager@latest app Tableau \
             --platform=darwin --arch=arm64,x64 \
             --electron-version="$ELECTRON_VERSION" \
-            --icon=icons/icon.icns --out=build --overwrite
+            --icon=icons/icon.icns --no-asar --out=build --overwrite
           # Pas d'--icon pour Windows : rcedit demanderait Wine sur macOS (l'icône de fenêtre vient de icon.png).
           npx --yes @electron/packager@latest app Tableau \
             --platform=win32 --arch=x64 \
             --electron-version="$ELECTRON_VERSION" \
-            --out=build --overwrite
+            --no-asar --out=build --overwrite
           ls build
 
       - name: Assemblage des zips
