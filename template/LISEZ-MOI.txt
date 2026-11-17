@@ -4,9 +4,11 @@ TABLEAU - LISEZ-MOI
 LANCER L'APPLICATION
 
   Mac :
-    Ouvre Tableau.app.
-    La premiere fois : clic droit sur Tableau.app > Ouvrir.
-    (ou, dans un terminal :  xattr -cr Tableau.app )
+    Si macOS dit que l'application est endommagee : ouvre le Terminal, tape xattr -cr
+    suivi d'un espace, glisse Tableau.app dans la fenetre, appuie sur Entree, puis
+    relance l'app.
+
+    Sinon, ouvre Tableau.app. La premiere fois : clic droit sur Tableau.app > Ouvrir.
 
   Windows :
     Ouvre Windows\Tableau.exe.

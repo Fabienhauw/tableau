@@ -10,7 +10,9 @@ Application de bureau (Electron) de post-its : des tableaux, des cadres et des n
    - `Tableau-windows-x64.zip` : Windows 64 bits
 2. Dézippe-le où tu veux (de préférence dans un dossier synchronisé si tu veux retrouver tes notes sur plusieurs ordinateurs).
 3. Lance l'application :
-   - **Mac** : `Tableau.app`. La première fois, **clic droit > Ouvrir** (ou, dans un terminal : `xattr -cr Tableau.app`), car l'application n'est pas signée par Apple.
+   - **Mac** : `Tableau.app`.
+     - **Si macOS dit que l'application est endommagée** : ouvre le Terminal, tape `xattr -cr` suivi d'un espace, glisse `Tableau.app` dans la fenêtre, appuie sur Entrée, puis relance l'app.
+     - Sinon, la première fois : **clic droit > Ouvrir**. L'application n'est pas notariée par Apple (signature ad hoc seulement).
    - **Windows** : `Windows/Tableau.exe`. Si SmartScreen s'affiche : **Informations complémentaires > Exécuter quand même**.
 
 ## Organisation du dossier

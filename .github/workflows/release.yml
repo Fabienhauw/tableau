@@ -37,6 +37,14 @@ jobs:
             --no-asar --out=build --overwrite
           ls build
 
+      - name: Signature ad hoc des apps Mac
+        run: |
+          set -euo pipefail
+          for d in build/Tableau-darwin-arm64 build/Tableau-darwin-x64; do
+            codesign --force --deep --sign - "$d/Tableau.app"
+            codesign --verify --deep --strict --verbose=2 "$d/Tableau.app"
+          done
+
       - name: Assemblage des zips
         run: |
           set -euo pipefail
