@@ -13,3 +13,4 @@ dist/
 
 # index.html local de travail (la version publique est dans public/)
 /index.html
+/index.avant-*.html
