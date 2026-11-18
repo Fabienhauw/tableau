@@ -242,6 +242,13 @@ html[data-theme=dark] .tmenu .tbtn:hover{background-color:#27324b}
 html[data-theme=dark] .tmenu select.tbtn{background-color:#141a2a}
 #zctl0{position:fixed;right:18px;bottom:18px;z-index:19}
 .zrow .zctl{position:fixed;right:18px;bottom:18px;z-index:5;box-shadow:0 4px 14px rgba(20,33,61,.18)}
+.whos i{min-width:20px;height:20px;box-sizing:border-box;padding:0 5px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px}
+.zwho{position:absolute;right:32px;top:62px;max-width:45%;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center;z-index:3}
+.zwho .zw{background:rgba(20,33,61,.13);color:#14213D;border-radius:999px;padding:3px 11px;font-size:13px;font-weight:600}
+.zwho .zwadd{border:1.5px dashed rgba(20,33,61,.4);background:transparent;color:#14213D;border-radius:999px;padding:2px 11px;font-size:12.5px;font-weight:600;cursor:pointer}
+.zwho .zwadd:hover{background:rgba(255,255,255,.6)}
+html[data-theme=dark] .zwho .zw{background:rgba(236,239,246,.16);color:#eceff6}
+html[data-theme=dark] .zwho .zwadd{color:#eceff6;border-color:rgba(236,239,246,.45)}
 </style>
 </head>
 <body>
@@ -536,8 +543,8 @@ function updateNote(el,n){
   var LL=el._L||{};if(!el._drag){el.style.left=(n.x+(LL.ox||0))+'px';el.style.top=(n.y+(LL.oy||0))+'px'}
   if(!el.classList.contains('editing')){var t=$('.txt',el);if(t.textContent!==n.text)t.textContent=n.text}
   el.classList.toggle('arch',!!n.arch);el.classList.toggle('leaf',!!n.leaf);var ba=$('.b-arch',el);if(ba)ba.title=n.arch?'Désarchiver':'Archiver';
-  var wl=(n.who||[]).map(function(pid){var d=boards.get(pid);return d&&d.pers&&!d.del?(d.name||'?').split(' ')[0]:null}).filter(Boolean),wh=$('.whos',el);
-  if(wl.length){if(!wh){wh=document.createElement('div');wh.className='whos';el.appendChild(wh)}var wt=wl.slice(0,3).map(function(x){return '<i>'+x.replace(/[<>&]/g,'')+'</i>'}).join('')+(wl.length>3?'<i>+'+(wl.length-3)+'</i>':'');if(wh.innerHTML!==wt)wh.innerHTML=wt}else if(wh)wh.remove();
+  var wl=(n.who||[]).map(function(pid){var d=boards.get(pid);return d&&d.pers&&!d.del?{n:d.name||'?',i:ini(d.name||'?')}:null}).filter(Boolean),wh=$('.whos',el);
+  if(wl.length){if(!wh){wh=document.createElement('div');wh.className='whos';el.appendChild(wh)}var wt=wl.slice(0,6).map(function(x){return '<i>'+x.i.replace(/[<>&"]/g,'')+'</i>'}).join('')+(wl.length>6?'<i>+'+(wl.length-6)+'</i>':'');if(wh.innerHTML!==wt)wh.innerHTML=wt}else if(wh)wh.remove();
   var k=0;notes.forEach(function(m){if(m.parent===n.id)k++});
   $('.badge',el).textContent=n.leaf?'':(k?('↘ '+k):'↘');
   if(!el.classList.contains('rsz')){
@@ -550,6 +557,14 @@ function sizeFont(el,n,w,h){
   if(!n.img){var f=Math.max(.8,Math.min(2.2,Math.sqrt((w*h)/(150*150))));b=Math.round(b*f*10)/10}
   el.style.fontSize=b+'px';
 }
+function renderZwho(L){
+  var n=notes.get(L.parentId),box=L.zwho;if(!n||!box)return;
+  var names=(n.who||[]).map(function(pid){var d=boards.get(pid);return d&&d.pers&&!d.del?d.name:null}).filter(Boolean);
+  var sig=names.join('|');if(box._sig===sig&&box.firstChild)return;box._sig=sig;box.textContent='';
+  names.forEach(function(nm){var c=document.createElement('span');c.className='zw';c.textContent=nm;box.appendChild(c)});
+  var a=document.createElement('button');a.className='zwadd';a.textContent=names.length?'👤':'👤 + Collaborateur';a.title='Choisir les collaborateurs concernés';
+  a.onclick=function(e){e.stopPropagation();whoPop(L.parentId,a)};box.appendChild(a);
+}
 function renderLevel(L){
   if(L.kind==='frame'){renderFrame(L);return}
   var list=[];notes.forEach(function(n){if((n.parent||null)===L.parentId&&(L.parentId!==null||inBoard(n)))list.push(n)});
@@ -561,6 +576,7 @@ function renderLevel(L){
     updateNote(el,n);
   });
   if(L.empty)L.empty.style.display=list.length?'none':'block';
+  if(L.zwho)renderZwho(L);
   if(L.title){var p=notes.get(L.parentId);if(p&&L.title.textContent!==p.text)L.title.textContent=p.text}
 }
 function rerender(){
@@ -691,7 +707,7 @@ function openLevel(cfg){
   var z=document.createElement('div');z.className='zoom';z.style.zIndex=20+levels.length;
   var back=levels.length>1?(levels[levels.length-1].label||''):'Mon tableau';
   if(back.length>28)back=back.slice(0,27)+'…';
-  z.innerHTML='<div class="ghost"></div><div class="zin"><div class="zbar"><button class="back"></button></div><div class="ztitle"></div><div class="tabs"><button class="tab on" data-p="a"></button><button class="tab" data-p="m"></button></div><div class="pane on" data-p="a"></div><div class="pane" data-p="m"></div></div>';
+  z.innerHTML='<div class="ghost"></div><div class="zin"><div class="zbar"><button class="back"></button></div><div class="ztitle"></div><div class="zwho"></div><div class="tabs"><button class="tab on" data-p="a"></button><button class="tab" data-p="m"></button></div><div class="pane on" data-p="a"></div><div class="pane" data-p="m"></div></div>';
   var q=function(s){return $(s,z)};
   q('.ghost').textContent=cfg.title;q('.ghost').style.color='#14213D';
   q('.back').textContent='← '+back;
@@ -713,7 +729,7 @@ function openLevel(cfg){
     var cv=document.createElement('div');cv.className='zcanvas';
     var em=document.createElement('div');em.className='empty';em.textContent='Vide pour l’instant. Ajoute une idée, ou dis-moi « note : … » dans le chat.';
     cv.appendChild(em);pa.appendChild(row);pa.appendChild(cv);
-    L.canvas=cv;L.empty=em;L.title=q('.ztitle');
+    L.canvas=cv;L.empty=em;L.title=q('.ztitle');L.zwho=q('.zwho');
     row.appendChild(mkZoomCtl(L));wheelZoom(cv,L,true);
     ab.onclick=function(){create(Object.assign({parent:cfg.key},slotSub(cfg.key)),L)};
     ab2.onclick=function(){create(Object.assign({parent:cfg.key,leaf:true},slotSub(cfg.key)),L)};
@@ -955,6 +971,7 @@ $('#trashbtn').onclick=function(){
 /* ---------- base locale (version application) ---------- */
 
 /* ---------- collaborateurs (pense-bête) ---------- */
+function ini(name){var w=String(name).trim().split(/[\s-]+/).filter(Boolean);if(!w.length)return '?';if(w.length===1)return w[0].charAt(0).toUpperCase()+w[0].charAt(1).toLowerCase();return (w[0].charAt(0)+w[w.length-1].charAt(0)).toUpperCase()}
 function persons(){var a=[];boards.forEach(function(d,id){if(d.pers&&!d.del)a.push({id:id,name:d.name||'?',asks:(d.asks||[]).slice(),ts:d.ts||0})});a.sort(function(x,y){return x.name.localeCompare(y.name,'fr')});return a}
 function savePerson(p){
   var o={name:p.name,pers:1,asks:p.asks,ts:p.ts||Date.now()};boards.set(p.id,o);
