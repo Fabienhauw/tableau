@@ -229,6 +229,19 @@ html[data-theme=dark] .whos i{background:rgba(20,33,61,.18)}
 .mpadd:hover{opacity:1}
 html[data-theme=dark] .mchip{background:rgba(236,239,246,.14)}
 html[data-theme=dark] .mpadd{border-color:rgba(236,239,246,.4)}
+.topbar{position:relative}
+#menubtn{font-size:18px;line-height:1;padding:7px 14px}
+.tmenu{display:none;position:absolute;left:0;top:calc(100% + 6px);z-index:90;flex-direction:column;align-items:stretch;gap:6px;min-width:230px;background:#fff;border:1px solid #d9d4c9;border-radius:16px;padding:10px;box-shadow:0 12px 34px rgba(20,33,61,.22)}
+.tmenu.on{display:flex}
+.tmenu .tbtn{border-radius:10px;text-align:left;border-color:transparent;background:transparent;padding:9px 12px}
+.tmenu .tbtn:hover{background-color:#f0eeea}
+.tmenu select.tbtn{border-color:#d9d4c9;background-color:#faf7f2}
+html[data-theme=dark] .tmenu{background:#1d2538;border-color:#33405c}
+html[data-theme=dark] .tmenu .tbtn{background-color:transparent}
+html[data-theme=dark] .tmenu .tbtn:hover{background-color:#27324b}
+html[data-theme=dark] .tmenu select.tbtn{background-color:#141a2a}
+#zctl0{position:fixed;right:18px;bottom:18px;z-index:19}
+.zrow .zctl{position:fixed;right:18px;bottom:18px;z-index:5;box-shadow:0 4px 14px rgba(20,33,61,.18)}
 </style>
 </head>
 <body>
@@ -237,7 +250,7 @@ html[data-theme=dark] .mpadd{border-color:rgba(236,239,246,.4)}
   <header>
     <h1 id="bname" title="Cliquer pour renommer le tableau">Mon tableau</h1>
     <p class="sub">Dis-moi une idée, je la pose au bon endroit.</p>
-    <div class="topbar"><select class="tbtn" id="bsel" title="Changer de tableau"></select><button class="tbtn" id="bnew">+ Nouveau tableau</button><button class="tbtn" id="bdel" title="Supprimer ce tableau (récupérable dans la corbeille)" style="display:none">Supprimer ce tableau</button><button class="tbtn" id="peoplebtn">👥 Collaborateurs</button><button class="tbtn" id="trashbtn">🗑 Corbeille</button><span id="zctl0"></span></div>
+    <div class="topbar"><button class="tbtn" id="menubtn" title="Menu" aria-label="Menu">☰</button><div class="tmenu" id="tmenu"><select class="tbtn" id="bsel" title="Changer de tableau"></select><button class="tbtn" id="bnew">+ Nouveau tableau</button><button class="tbtn" id="bdel" title="Supprimer ce tableau (récupérable dans la corbeille)" style="display:none">Supprimer ce tableau</button><button class="tbtn" id="peoplebtn">👥 Collaborateurs</button><button class="tbtn" id="trashbtn">🗑 Corbeille</button></div></div><span id="zctl0"></span>
     <div class="legend" id="legend"></div>
     <div id="status"></div>
   </header>
@@ -1015,6 +1028,15 @@ function whoPop(id,btn){
   document.body.appendChild(d);
   setTimeout(function(){function off(e){if(!d.contains(e.target)){d.remove();document.removeEventListener('pointerdown',off,true)}}document.addEventListener('pointerdown',off,true)},0);
 }
+
+(function(){
+  var mb=$('#menubtn'),mn=$('#tmenu');
+  mb.onclick=function(e){e.stopPropagation();mn.classList.toggle('on')};
+  document.addEventListener('pointerdown',function(e){if(mn.classList.contains('on')&&!mn.contains(e.target)&&e.target!==mb)mn.classList.remove('on')},true);
+  ['#bnew','#bdel','#peoplebtn','#trashbtn'].forEach(function(q){var b=$(q);if(b)b.addEventListener('click',function(){mn.classList.remove('on')})});
+  $('#bsel').addEventListener('change',function(){mn.classList.remove('on')});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')mn.classList.remove('on')});
+})();
 async function localDb(){
   try{
     var r,j;
