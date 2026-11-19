@@ -63,9 +63,12 @@ h1{margin:0;font-size:38px;letter-spacing:-.5px;font-weight:700}
 .empty{position:absolute;left:24px;top:24px;font-size:15px;opacity:.55;max-width:420px;pointer-events:none}
 
 .fb{display:flex;gap:6px;align-items:center}
-.fdel,.fmv{width:30px;height:30px;border-radius:50%;border:none;background:rgba(20,33,61,.08);color:#14213D;cursor:pointer;opacity:0;transition:opacity .12s;font-size:16px;line-height:1;padding:0}
-.frame:hover .fdel,.frame:hover .fmv{opacity:1}
-.fmv{font-size:18px}
+.fdel{width:30px;height:30px;border-radius:50%;border:none;background:rgba(20,33,61,.08);color:#14213D;cursor:pointer;opacity:0;transition:opacity .12s;font-size:16px;line-height:1;padding:0}
+.frame:hover .fdel{opacity:1}
+.frame{transition:translate .16s}
+.frame.fdrag{transition:none;z-index:30;box-shadow:0 18px 40px rgba(20,33,61,.25);cursor:grabbing}
+.frame.fdrag *{cursor:grabbing!important}
+#board .postit.fshift{transition:translate .16s}
 .fdel.arm,.fdel.arm:hover{opacity:1;background:#c0392b;color:#fff;width:auto;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600}
 .frame .ft{cursor:pointer}.frame .ft:hover{text-decoration:underline}
 .tabs{padding:8px 32px 0;display:flex;gap:6px}
@@ -142,7 +145,7 @@ html[data-theme=dark] .mdel,html[data-theme=dark] .trow .dl,html[data-theme=dark
 html[data-theme=dark] .mdel.arm,html[data-theme=dark] .trow .dl.arm{background:#c0392b;color:#fff}
 html[data-theme=dark] .addframe{border-color:#3b4768;color:#eceff6}
 html[data-theme=dark] .addframe:hover{background:rgba(255,255,255,.06)}
-html[data-theme=dark] .fdel,html[data-theme=dark] .fmv{background:rgba(255,255,255,.12);color:#eceff6}
+html[data-theme=dark] .fdel{background:rgba(255,255,255,.12);color:#eceff6}
 html[data-theme=dark] .fdel.arm{background:#c0392b;color:#fff}
 html[data-theme=dark] .tab{color:#eceff6}
 html[data-theme=dark] h1[contenteditable=true]{outline-color:rgba(236,239,246,.4)}
@@ -755,7 +758,7 @@ function openLevel(cfg){
       var v=zt.textContent.trim(),d=bdoc(cur),fr=d.frames.map(function(f){return f.id===cfg.frame?{id:f.id,t:v||f.t}:f});
       if(!v){zt.textContent=cfg.title;return}
       if(v!==cfg.title){cfg.title=v;L.label=v;boards.set(cur,{name:d.name,frames:fr,ts:d.ts||0});saveBoard(cur);
-        $$('.frame').forEach(function(x,i){var t=$('.ft',x);if(fr[i])t.textContent=fr[i].t+' ↗'})}
+        $$('.frame').forEach(function(x,i){var t=$('.ft',x);if(fr[i])t.textContent=fr[i].t})}
     };
   }
   var P=buildMeet(cfg.scope);P.tab=tabM;pm.appendChild(P.wrap);
@@ -843,13 +846,40 @@ function saveBoard(b){
   boards.set(b,o);
   if(bcol)bcol.doc(b).set(o).catch(function(){toast('Enregistrement impossible')});
 }
-function moveFrame(i,dir){
-  var d=bdoc(cur),j=i+dir;if(j<0||j>=d.frames.length)return;
-  var nf=d.frames.slice(),t=nf[i];nf[i]=nf[j];nf[j]=t;
-  function shift(n,id){if(n.parent||(n.board||'main')!==cur)return;var k=Math.floor((n.x+75)/388);
-    if(k===i){n.x+=dir*388;chainWrite(col,id,id,{x:n.x})}else if(k===j){n.x-=dir*388;chainWrite(col,id,id,{x:n.x})}}
+var frameMoved=false;
+function reorderFrame(i,j){
+  var d=bdoc(cur);if(i===j||j<0||j>=d.frames.length)return;
+  var nf=d.frames.slice(),it=nf.splice(i,1)[0];nf.splice(j,0,it);
+  function map(k){return k===i?j:(i<j&&k>i&&k<=j)?k-1:(i>j&&k<i&&k>=j)?k+1:k}
+  function shift(n,id){if(n.parent||(n.board||'main')!==cur)return;var k=Math.floor((n.x+75)/388),nk=map(k);
+    if(nk!==k){n.x+=(nk-k)*388;chainWrite(col,id,id,{x:n.x})}}
   notes.forEach(shift);trash.forEach(shift);
   boards.set(cur,{name:d.name,frames:nf,ts:d.ts||Date.now()});saveBoard(cur);buildBoard();
+}
+function frameDrag(d,i){
+  d.addEventListener('pointerdown',function(e){
+    if(e.button>0||e.target.closest('button'))return;
+    var n=frames().length,sx=e.clientX,moved=false,j=i,fe=$$('.frame',board);
+    var sc=L0.scale||1;
+    function apply(dx){
+      j=Math.max(0,Math.min(n-1,Math.round(i+dx/388)));
+      function off(k){return k===i?dx:(i<j&&k>i&&k<=j)?-388:(i>j&&k<i&&k>=j)?388:0}
+      fe.forEach(function(el,k){el.style.translate=off(k)+'px 0'});
+      L0.els.forEach(function(el,id){var nn=notes.get(id);if(!nn)return;var k=Math.floor((nn.x+75)/388);
+        el.classList.toggle('fshift',k!==i);el.style.translate=off(k)+'px 0'});
+    }
+    function mv(ev){
+      var dx=(ev.clientX-sx)/sc;
+      if(!moved&&Math.abs(dx)>6){moved=true;frameMoved=true;d.classList.add('fdrag');document.body.style.userSelect='none'}
+      if(moved)apply(dx);
+    }
+    function up(){
+      window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
+      document.body.style.userSelect='';
+      if(moved){reorderFrame(i,j);buildBoard();setTimeout(function(){frameMoved=false},60)}
+    }
+    window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+  });
 }
 function deleteFrame(i){
   var d=bdoc(cur),nf=d.frames.filter(function(_,k){return k!==i});
@@ -862,13 +892,11 @@ function buildBoard(){
   var fr=frames();
   fr.forEach(function(f,i){
     var d=document.createElement('div');d.className='frame';d.style.left=(i*388)+'px';
-    d.innerHTML='<div class="fh"><span class="ft"></span><span class="fb"><button class="fmv fl" title="Déplacer ce cadre vers la gauche">‹</button><button class="fmv fr" title="Déplacer ce cadre vers la droite">›</button><button class="fdel" title="Supprimer ce cadre (il doit être vide)">×</button><button class="add" title="Ajouter une note">+</button></span></div>';
-    $('.ft',d).textContent=f.t+' ↗';$('.ft',d).title='Ouvrir : vue d’ensemble et réunions';
-    $('.ft',d).onclick=function(){openFrame(f,d)};
+    d.innerHTML='<div class="fh"><span class="ft"></span><span class="fb"><button class="fdel" title="Supprimer ce cadre (il doit être vide)">×</button><button class="add" title="Ajouter une note">+</button></span></div>';
+    $('.ft',d).textContent=f.t;$('.ft',d).title='Ouvrir : vue d’ensemble et réunions';
+    $('.ft',d).onclick=function(){if(frameMoved)return;openFrame(f,d)};
     $('.add',d).onclick=function(){var s=slotTop(f.id);create({frame:f.id,parent:null,x:s.x,y:s.y},L0)};
-    var bl=$('.fl',d),br=$('.fr',d);
-    if(i===0)bl.style.display='none';if(i===fr.length-1)br.style.display='none';
-    bl.onclick=function(e){e.stopPropagation();moveFrame(i,-1)};br.onclick=function(e){e.stopPropagation();moveFrame(i,1)};
+    frameDrag(d,i);
     var fdb=$('.fdel',d);
     fdb.onclick=function(e){
       e.stopPropagation();
