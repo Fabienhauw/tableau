@@ -70,7 +70,7 @@ h1{margin:0;font-size:38px;letter-spacing:-.5px;font-weight:700}
 .frame.fdrag *{cursor:grabbing!important}
 #board .postit.fshift{transition:translate .16s}
 .fdel.arm,.fdel.arm:hover{opacity:1;background:#c0392b;color:#fff;width:auto;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600}
-.frame .ft{cursor:pointer}.frame .ft:hover{text-decoration:underline}
+.frame{cursor:pointer}.frame .ft{cursor:pointer}.frame .ft:hover{text-decoration:underline}
 .tabs{padding:8px 32px 0;display:flex;gap:6px}
 .tab{border:none;background:transparent;color:#14213D;font-family:inherit;font-weight:600;font-size:14px;padding:8px 16px;border-radius:999px;cursor:pointer;opacity:.6}
 .tab.on{background:#14213D;color:#fff;opacity:1}
@@ -971,7 +971,7 @@ function buildBoard(){
     var d=document.createElement('div');d.className='frame';var cp=cellOf(f,i);d.style.left=(cp.c*388)+'px';d.style.top=(cp.r*ROWH)+'px';
     d.innerHTML='<div class="fh"><span class="ft"></span><span class="fb"><button class="fdel" title="Supprimer ce cadre (il doit être vide)">×</button><button class="add" title="Ajouter une note">+</button></span></div>';
     $('.ft',d).textContent=f.t;$('.ft',d).title='Ouvrir : vue d’ensemble et réunions';
-    $('.ft',d).onclick=function(){if(frameMoved)return;openFrame(f,d)};
+    d.onclick=function(e){if(frameMoved||e.target.closest('button'))return;openFrame(f,d)};
     $('.add',d).onclick=function(){var s=slotTop(f.id);create({frame:f.id,parent:null,x:s.x,y:s.y},L0)};
     frameDrag(d,i);
     var fdb=$('.fdel',d);
