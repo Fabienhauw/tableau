@@ -134,6 +134,22 @@ app.whenReady().then(() => {
     win.setMenuBarVisibility(false);
     win.webContents.setVisualZoomLevelLimits(1, 1);
     win.loadURL(`http://${ORIGIN}/`);
+    // macOS : le curseur « main » peut être perdu quand la souris reste immobile. On renvoie périodiquement la position de la souris
+    // à la page (hors glisser en cours) pour que le navigateur recalcule le curseur.
+    if (process.platform === 'darwin') {
+      const { screen } = require('electron');
+      setInterval(() => {
+        try {
+          if (!win || win.isDestroyed() || !win.isFocused()) return;
+          const p = screen.getCursorScreenPoint(), b = win.getContentBounds();
+          const x = p.x - b.x, y = p.y - b.y;
+          if (x < 0 || y < 0 || x >= b.width || y >= b.height) return;
+          win.webContents.executeJavaScript('window.__down===true').then(down => {
+            if (!down && win && !win.isDestroyed()) win.webContents.sendInputEvent({ type: 'mouseMove', x: Math.round(x), y: Math.round(y) });
+          }).catch(() => {});
+        } catch (e) {}
+      }, 200);
+    }
     win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
   });
 });

@@ -1173,8 +1173,7 @@ function whoPop(id,btn){
   $('#bsel').addEventListener('change',function(){mn.classList.remove('on')});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')mn.classList.remove('on')});
 })();
-/* Hypothèse : sur certains Mac, le curseur « main » est perdu quand la souris reste immobile. Un micro-changement de mise en page invisible, toutes les 300 ms, force le navigateur à recalculer le curseur sous la souris. */
-(function(){var t=document.createElement('div');t.style.cssText='position:fixed;left:-20px;top:-20px;width:1px;height:1px;pointer-events:none;opacity:0';document.body.appendChild(t);var w=1;setInterval(function(){w=w===1?2:1;t.style.width=w+'px'},300)})();
+window.__down=false;['pointerdown'].forEach(function(e){document.addEventListener(e,function(){window.__down=true},true)});['pointerup','pointercancel','dragend','blur'].forEach(function(e){window.addEventListener(e,function(){window.__down=false},true)});
 async function localDb(){
   try{
     var r,j;
