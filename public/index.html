@@ -253,6 +253,7 @@ html[data-theme=dark] .tmenu select.tbtn{background-color:#141a2a}
 .zwho .zwadd:hover{background:rgba(255,255,255,.6)}
 html[data-theme=dark] .zwho .zw{background:rgba(236,239,246,.16);color:#eceff6}
 html[data-theme=dark] .zwho .zwadd{color:#eceff6;border-color:rgba(236,239,246,.45)}
+.ovp.oarch{opacity:.5;filter:saturate(.5)}
 </style>
 </head>
 <body>
@@ -286,6 +287,14 @@ var DEFAULT_FRAMES=[{id:'c1',t:'Idées'},{id:'c2',t:'À explorer'},{id:'c3',t:'E
 var RET=Infinity, boards=new Map(), cur='main', bcol=null, trash=new Map(), mtrash=new Map();
 function bdoc(b){var d=boards.get(b);if(d&&d.frames&&d.frames.length)return d;if(b==='main')return {name:(d&&d.name)||'Mon tableau',frames:DEFAULT_FRAMES};return d||{name:'Tableau',frames:[{id:'c1',t:'Cadre 1'}]}}
 function frames(){return bdoc(cur).frames}
+var ROWH=800;
+function cellOf(f,i){return {c:f.c!=null?f.c:i,r:f.r||0}}
+function laidOut(fr){return fr.map(function(f,i){var p=cellOf(f,i);return {id:f.id,t:f.t,c:p.c,r:p.r}})}
+function frameIdxOf(n){
+  var fr=frames(),c=Math.floor((n.x+75)/388),best=-1,br=-1,near=-1,nr=1e9;
+  fr.forEach(function(f,i){var p=cellOf(f,i);if(p.c!==c)return;if(p.r*ROWH<=n.y+40&&p.r>br){best=i;br=p.r}if(p.r<nr){near=i;nr=p.r}});
+  return best>=0?best:near;
+}
 function inBoard(n){return (n.board||'main')===cur}
 function scopeFrame(f){return cur==='main'?'frame:'+f:'frame:'+cur+':'+f}
 function rid(){return Math.random().toString(36).slice(2,10)}
@@ -370,13 +379,14 @@ function create(data,L){
 }
 function slotTop(frame){
   var i=frames().findIndex(function(f){return f.id===frame});if(i<0)i=0;
-  var x0=i*388+24;
-  for(var r=0;r<14;r++)for(var c=0;c<2;c++){
-    var x=x0+c*166,y=56+r*166;
+  var cp=cellOf(frames()[i]||{},i),x0=cp.c*388+24,y0=cp.r*ROWH;
+  for(var r=0;r<4;r++)for(var c=0;c<2;c++){
+    var x=x0+c*166,y=y0+56+r*166;
     var taken=false;notes.forEach(function(n){if(!n.parent&&inBoard(n)&&Math.abs(n.x-x)<60&&Math.abs(n.y-y)<60)taken=true});
     if(!taken)return{x:x,y:y};
   }
-  return{x:x0,y:56};
+  var k=0;notes.forEach(function(n){if(!n.parent&&inBoard(n)&&frameIdxOf(n)===i)k++});
+  return{x:x0+(k%5)*12,y:y0+56+(k%5)*12};
 }
 function slotSub(pid){
   for(var r=0;r<20;r++)for(var c=0;c<5;c++){
@@ -511,7 +521,7 @@ function noteBox(L,n){
 function arrange(L){
   var list=[];notes.forEach(function(n){if((n.parent||null)===L.parentId&&!n.del)list.push(n)});
   if(!list.length)return;
-  list.sort(function(a,b){return (Math.round(a.y/80)-Math.round(b.y/80))||(a.x-b.x)});
+  list.sort(function(a,b){return (a.arch?1:0)-(b.arch?1:0)||(Math.round(a.y/80)-Math.round(b.y/80))||(a.x-b.x)});
   L.ox=0;L.oy=0;var W=830,G=18,x=24,y=24,rowH=0;
   list.forEach(function(n){
     var b=noteBox(L,n);
@@ -571,6 +581,7 @@ function renderZwho(L){
   a.onclick=function(e){e.stopPropagation();whoPop(L.parentId,a)};box.appendChild(a);
 }
 function renderLevel(L){
+  if(L===L0)setTimeout(fitFrames,0);
   if(L.kind==='frame'){renderFrame(L);return}
   var list=[];notes.forEach(function(n){if((n.parent||null)===L.parentId&&(L.parentId!==null||inBoard(n)))list.push(n)});
   var ids={};list.forEach(function(n){ids[n.id]=1});
@@ -779,13 +790,13 @@ function openLevel(cfg){
 }
 function renderFrame(L){
   var i=frames().findIndex(function(f){return f.id===L.frame});
-  var list=[];notes.forEach(function(n){if(!n.parent&&inBoard(n)&&Math.floor((n.x+75)/388)===i)list.push(n)});
-  list.sort(function(a,b){return a.y-b.y||a.x-b.x});
-  var sig=list.map(function(n){return n.id+'|'+n.text+'|'+n.color}).join('§');
+  var list=[];notes.forEach(function(n){if(!n.parent&&inBoard(n)&&frameIdxOf(n)===i)list.push(n)});
+  list.sort(function(a,b){return (a.arch?1:0)-(b.arch?1:0)||a.y-b.y||a.x-b.x});
+  var sig=list.map(function(n){return n.id+'|'+n.text+'|'+n.color+'|'+(n.arch?1:0)}).join('§');
   if(L.sig===sig)return;L.sig=sig;L.ovl.textContent='';
   if(!list.length){var e=document.createElement('div');e.className='mempty';e.textContent='Aucun post-it dans ce cadre.';L.ovl.appendChild(e);return}
   list.forEach(function(n){
-    var d=document.createElement('div');d.className='ovp';d.style.backgroundColor=col_(n.color)[0];d.textContent=n.text;var Ln=(n.text||'').length;d.style.fontSize=Ln<=40?'17px':Ln<=80?'15px':Ln<=120?'13.5px':'12px';
+    var d=document.createElement('div');d.className='ovp'+(n.arch?' oarch':'');d.style.backgroundColor=col_(n.color)[0];d.textContent=n.text;var Ln=(n.text||'').length;d.style.fontSize=Ln<=40?'17px':Ln<=80?'15px':Ln<=120?'13.5px':'12px';
     d.onclick=function(){openNote(n.id,d)};L.ovl.appendChild(d);
   });
 }
@@ -851,59 +862,56 @@ function saveBoard(b){
   if(bcol)bcol.doc(b).set(o).catch(function(){toast('Enregistrement impossible')});
 }
 var frameMoved=false;
-function arrangeFrame(fid){
-  var i=frames().findIndex(function(f){return f.id===fid});if(i<0)return;
-  var list=[];notes.forEach(function(n){if(!n.parent&&inBoard(n)&&Math.floor((n.x+75)/388)===i)list.push(n)});
-  if(!list.length){toast('Rien à ranger dans ce cadre');return}
-  list.sort(function(a,b){return (Math.round(a.y/80)-Math.round(b.y/80))||(a.x-b.x)});
-  list.forEach(function(n,k){save(n.id,{x:i*388+24+(k%2)*166,y:56+Math.floor(k/2)*166,rot:0})});
-  toast('Post-its rangés');
-}
-function reorderFrame(i,j){
-  var d=bdoc(cur);if(i===j||j<0||j>=d.frames.length)return;
-  var nf=d.frames.slice(),it=nf.splice(i,1)[0];nf.splice(j,0,it);
-  function map(k){return k===i?j:(i<j&&k>i&&k<=j)?k-1:(i>j&&k<i&&k>=j)?k+1:k}
-  function shift(n,id){if(n.parent||(n.board||'main')!==cur)return;var k=Math.floor((n.x+75)/388),nk=map(k);
-    if(nk!==k){n.x+=(nk-k)*388;chainWrite(col,id,id,{x:n.x})}}
-  notes.forEach(shift);trash.forEach(shift);
-  boards.set(cur,{name:d.name,frames:nf,ts:d.ts||Date.now()});saveBoard(cur);buildBoard();
+function moveFrameTo(i,tc,tr){
+  var d=bdoc(cur),lf=laidOut(d.frames),p0=lf[i],other=-1;
+  if(!p0||(p0.c===tc&&p0.r===tr))return;
+  lf.forEach(function(f,k){if(k!==i&&f.c===tc&&f.r===tr)other=k});
+  var dc=tc-p0.c,dr=tr-p0.r,todo=[];
+  function collect(n,id){if(n.parent||(n.board||'main')!==cur)return;var k=frameIdxOf(n);if(k===i||k===other)todo.push([n,id,k])}
+  notes.forEach(collect);trash.forEach(collect);
+  todo.forEach(function(t){var n=t[0],sg=t[2]===i?1:-1;n.x+=sg*dc*388;n.y+=sg*dr*ROWH;chainWrite(col,t[1],t[1],{x:n.x,y:n.y})});
+  var oc=p0.c,or=p0.r;lf[i].c=tc;lf[i].r=tr;if(other>=0){lf[other].c=oc;lf[other].r=or}
+  boards.set(cur,{name:d.name,frames:lf,ts:d.ts||Date.now()});saveBoard(cur);
 }
 function frameDrag(d,i){
   d.addEventListener('pointerdown',function(e){
     if(e.button>0||e.target.closest('button'))return;
-    var n=frames().length,sx=e.clientX,moved=false,j=i,fe=$$('.frame',board);
-    var sc=L0.scale||1;
-    function apply(dx){
-      j=Math.max(0,Math.min(n-1,Math.round(i+dx/388)));
-      function off(k){return k===i?dx:(i<j&&k>i&&k<=j)?-388:(i>j&&k<i&&k>=j)?388:0}
-      fe.forEach(function(el,k){el.style.translate=off(k)+'px 0'});
-      L0.els.forEach(function(el,id){var nn=notes.get(id);if(!nn)return;var k=Math.floor((nn.x+75)/388);
-        el.classList.toggle('fshift',k!==i);el.style.translate=off(k)+'px 0'});
+    var fr=frames(),p0=cellOf(fr[i],i),sx=e.clientX,sy=e.clientY,moved=false,tc=p0.c,tr=p0.r,fe=$$('.frame',board),sc=L0.scale||1;
+    function apply(dx,dy){
+      tc=Math.max(0,Math.round(p0.c+dx/388));tr=Math.max(0,Math.round(p0.r+dy/ROWH));
+      var other=-1;fr.forEach(function(f,k){if(k!==i){var q=cellOf(f,k);if(q.c===tc&&q.r===tr)other=k}});
+      function off(k){return k===i?[dx,dy]:k===other?[(p0.c-tc)*388,(p0.r-tr)*ROWH]:[0,0]}
+      fe.forEach(function(el,k){var o=off(k);el.style.translate=o[0]+'px '+o[1]+'px'});
+      L0.els.forEach(function(el,id){var nn=notes.get(id);if(!nn)return;var k=frameIdxOf(nn),o=off(k);el.classList.toggle('fshift',k!==i);el.style.translate=o[0]+'px '+o[1]+'px'});
     }
     function mv(ev){
-      var dx=(ev.clientX-sx)/sc;
-      if(!moved&&Math.abs(dx)>6){moved=true;frameMoved=true;d.classList.add('fdrag');document.body.style.userSelect='none'}
-      if(moved)apply(dx);
+      var dx=(ev.clientX-sx)/sc,dy=(ev.clientY-sy)/sc;
+      if(!moved&&Math.hypot(dx,dy)>6){moved=true;frameMoved=true;d.classList.add('fdrag');document.body.style.userSelect='none'}
+      if(moved)apply(dx,dy);
     }
     function up(){
       window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
       document.body.style.userSelect='';
-      if(moved){reorderFrame(i,j);buildBoard();setTimeout(function(){frameMoved=false},60)}
+      if(moved){moveFrameTo(i,tc,tr);buildBoard();setTimeout(function(){frameMoved=false},60)}
     }
     window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
   });
 }
+function fitFrames(){
+  var fr=frames(),fe=$$('.frame',board);if(fe.length!==fr.length)return;
+  var bot=fr.map(function(){return 0});
+  notes.forEach(function(n){if(n.parent||!inBoard(n))return;var k=frameIdxOf(n);if(k<0)return;var p=cellOf(fr[k],k);bot[k]=Math.max(bot[k],n.y+150-p.r*ROWH+40)});
+  fe.forEach(function(el,k){var h=Math.max(600,Math.min(ROWH-40,bot[k]));if(el._h!==h){el._h=h;el.style.height=h+'px'}});
+}
 function deleteFrame(i){
-  var d=bdoc(cur),nf=d.frames.filter(function(_,k){return k!==i});
-  function shift(n,id){if(!n.parent&&(n.board||'main')===cur&&Math.floor((n.x+75)/388)>i){n.x-=388;chainWrite(col,id,id,{x:n.x})}}
-  notes.forEach(shift);trash.forEach(shift);
+  var d=bdoc(cur),nf=laidOut(d.frames).filter(function(_,k){return k!==i});
   boards.set(cur,{name:d.name,frames:nf,ts:d.ts||Date.now()});saveBoard(cur);buildBoard();
 }
 function buildBoard(){
   L0.els.forEach(function(el){el.remove()});L0.els.clear();board.textContent='';
   var fr=frames();
   fr.forEach(function(f,i){
-    var d=document.createElement('div');d.className='frame';d.style.left=(i*388)+'px';
+    var d=document.createElement('div');d.className='frame';var cp=cellOf(f,i);d.style.left=(cp.c*388)+'px';d.style.top=(cp.r*ROWH)+'px';
     d.innerHTML='<div class="fh"><span class="ft"></span><span class="fb"><button class="fdel" title="Supprimer ce cadre (il doit être vide)">×</button><button class="add" title="Ajouter une note">+</button></span></div>';
     $('.ft',d).textContent=f.t;$('.ft',d).title='Ouvrir : vue d’ensemble et réunions';
     $('.ft',d).onclick=function(){if(frameMoved)return;openFrame(f,d)};
@@ -914,7 +922,7 @@ function buildBoard(){
       e.stopPropagation();
       if(frames().length<=1){toast('Un tableau garde au moins un cadre');return}
       var nn=0,nm=0,sc=scopeFrame(f.id);
-      notes.forEach(function(n){if(!n.parent&&inBoard(n)&&Math.floor((n.x+75)/388)===i)nn++});
+      notes.forEach(function(n){if(!n.parent&&inBoard(n)&&frameIdxOf(n)===i)nn++});
       meetings.forEach(function(m){if(m.scope===sc)nm++});
       if(nn||nm){toast('Ce cadre contient '+(nn?nn+' post-it(s)':'')+(nn&&nm?' et ':'')+(nm?nm+' réunion(s)':'')+' : supprime-les d\u2019abord (ils iront à la corbeille).');return}
       if(!fdb.classList.contains('arm')){fdb.classList.add('arm');fdb.textContent='Supprimer ?';setTimeout(function(){fdb.classList.remove('arm');fdb.textContent='×'},2200);return}
@@ -922,13 +930,14 @@ function buildBoard(){
     };
     board.appendChild(d);
   });
-  var af=document.createElement('div');af.className='addframe';af.style.left=(fr.length*388)+'px';af.textContent='+ Cadre';
+  var lfx=laidOut(fr),mc0=-1,mr=0;lfx.forEach(function(q){if(q.r===0)mc0=Math.max(mc0,q.c);mr=Math.max(mr,q.r)});
+  var af=document.createElement('div');af.className='addframe';af.style.left=((mc0+1)*388)+'px';af.textContent='+ Cadre';
   af.onclick=function(){
-    var d=bdoc(cur),nf=d.frames.concat([{id:'c'+rid(),t:'Nouveau cadre'}]);
+    var d=bdoc(cur),lf2=laidOut(d.frames),m2=-1;lf2.forEach(function(q){if(q.r===0)m2=Math.max(m2,q.c)});var nf=lf2.concat([{id:'c'+rid(),t:'Nouveau cadre',c:m2+1,r:0}]);
     boards.set(cur,{name:d.name,frames:nf,ts:d.ts||Date.now()});saveBoard(cur);buildBoard();
   };
   board.appendChild(af);
-  board.style.width=((fr.length+1)*388)+'px';
+  board.style.width=(Math.max(mc0+2,...lfx.map(function(q){return q.c+1}))*388)+'px';board.style.height=((mr+2)*ROWH)+'px';
   renderLevel(L0);
   $('#bname').textContent=bdoc(cur).name;
   refreshSel();
