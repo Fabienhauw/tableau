@@ -63,8 +63,9 @@ h1{margin:0;font-size:38px;letter-spacing:-.5px;font-weight:700}
 .empty{position:absolute;left:24px;top:24px;font-size:15px;opacity:.55;max-width:420px;pointer-events:none}
 
 .fb{display:flex;gap:6px;align-items:center}
-.fdel{width:30px;height:30px;border-radius:50%;border:none;background:rgba(20,33,61,.08);color:#14213D;cursor:pointer;opacity:0;transition:opacity .12s;font-size:16px;line-height:1;padding:0}
-.frame:hover .fdel{opacity:1}
+.fdel,.fmv{width:30px;height:30px;border-radius:50%;border:none;background:rgba(20,33,61,.08);color:#14213D;cursor:pointer;opacity:0;transition:opacity .12s;font-size:16px;line-height:1;padding:0}
+.frame:hover .fdel,.frame:hover .fmv{opacity:1}
+.fmv{font-size:18px}
 .fdel.arm,.fdel.arm:hover{opacity:1;background:#c0392b;color:#fff;width:auto;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600}
 .frame .ft{cursor:pointer}.frame .ft:hover{text-decoration:underline}
 .tabs{padding:8px 32px 0;display:flex;gap:6px}
@@ -141,7 +142,7 @@ html[data-theme=dark] .mdel,html[data-theme=dark] .trow .dl,html[data-theme=dark
 html[data-theme=dark] .mdel.arm,html[data-theme=dark] .trow .dl.arm{background:#c0392b;color:#fff}
 html[data-theme=dark] .addframe{border-color:#3b4768;color:#eceff6}
 html[data-theme=dark] .addframe:hover{background:rgba(255,255,255,.06)}
-html[data-theme=dark] .fdel{background:rgba(255,255,255,.12);color:#eceff6}
+html[data-theme=dark] .fdel,html[data-theme=dark] .fmv{background:rgba(255,255,255,.12);color:#eceff6}
 html[data-theme=dark] .fdel.arm{background:#c0392b;color:#fff}
 html[data-theme=dark] .tab{color:#eceff6}
 html[data-theme=dark] h1[contenteditable=true]{outline-color:rgba(236,239,246,.4)}
@@ -842,6 +843,14 @@ function saveBoard(b){
   boards.set(b,o);
   if(bcol)bcol.doc(b).set(o).catch(function(){toast('Enregistrement impossible')});
 }
+function moveFrame(i,dir){
+  var d=bdoc(cur),j=i+dir;if(j<0||j>=d.frames.length)return;
+  var nf=d.frames.slice(),t=nf[i];nf[i]=nf[j];nf[j]=t;
+  function shift(n,id){if(n.parent||(n.board||'main')!==cur)return;var k=Math.floor((n.x+75)/388);
+    if(k===i){n.x+=dir*388;chainWrite(col,id,id,{x:n.x})}else if(k===j){n.x-=dir*388;chainWrite(col,id,id,{x:n.x})}}
+  notes.forEach(shift);trash.forEach(shift);
+  boards.set(cur,{name:d.name,frames:nf,ts:d.ts||Date.now()});saveBoard(cur);buildBoard();
+}
 function deleteFrame(i){
   var d=bdoc(cur),nf=d.frames.filter(function(_,k){return k!==i});
   function shift(n,id){if(!n.parent&&(n.board||'main')===cur&&Math.floor((n.x+75)/388)>i){n.x-=388;chainWrite(col,id,id,{x:n.x})}}
@@ -853,10 +862,13 @@ function buildBoard(){
   var fr=frames();
   fr.forEach(function(f,i){
     var d=document.createElement('div');d.className='frame';d.style.left=(i*388)+'px';
-    d.innerHTML='<div class="fh"><span class="ft"></span><span class="fb"><button class="fdel" title="Supprimer ce cadre (il doit être vide)">×</button><button class="add" title="Ajouter une note">+</button></span></div>';
+    d.innerHTML='<div class="fh"><span class="ft"></span><span class="fb"><button class="fmv fl" title="Déplacer ce cadre vers la gauche">‹</button><button class="fmv fr" title="Déplacer ce cadre vers la droite">›</button><button class="fdel" title="Supprimer ce cadre (il doit être vide)">×</button><button class="add" title="Ajouter une note">+</button></span></div>';
     $('.ft',d).textContent=f.t+' ↗';$('.ft',d).title='Ouvrir : vue d’ensemble et réunions';
     $('.ft',d).onclick=function(){openFrame(f,d)};
     $('.add',d).onclick=function(){var s=slotTop(f.id);create({frame:f.id,parent:null,x:s.x,y:s.y},L0)};
+    var bl=$('.fl',d),br=$('.fr',d);
+    if(i===0)bl.style.display='none';if(i===fr.length-1)br.style.display='none';
+    bl.onclick=function(e){e.stopPropagation();moveFrame(i,-1)};br.onclick=function(e){e.stopPropagation();moveFrame(i,1)};
     var fdb=$('.fdel',d);
     fdb.onclick=function(e){
       e.stopPropagation();
