@@ -180,6 +180,7 @@ html[data-theme=dark] .postit.arch::before{background:rgba(20,26,42,.55)}
 .lightbox img{max-width:92vw;max-height:92vh;border-radius:4px;box-shadow:0 20px 60px rgba(0,0,0,.5);background:#fff}
 .postit .rz{display:none;position:absolute;right:0;bottom:0;width:20px;height:20px;opacity:0;transition:opacity .15s;background:linear-gradient(135deg,transparent 52%,rgba(20,33,61,.55) 52%,rgba(20,33,61,.55) 60%,transparent 60%,transparent 72%,rgba(20,33,61,.55) 72%,rgba(20,33,61,.55) 80%,transparent 80%);border-bottom-right-radius:inherit}
 .zcanvas .postit .rz{display:block}
+.postit .txt,.ovp .otxt{line-height:1.32}
 .postit:hover .rz,.postit.rsz .rz{opacity:1}
 .postit .rz,.postit .rz:hover{cursor:nwse-resize!important}
 .postit.rsz{transition:none;transform:rotate(0deg)}
@@ -545,13 +546,14 @@ function openLightbox(n){
   d.onclick=close;document.addEventListener('keydown',kd,true);
   document.body.appendChild(d);
 }
+function bul(v){return v.replace(/^[ \t]*[-*][ \t]+/gm,'• ')}
 function startEdit(el,id){
   var t=$('.txt',el);
   el.classList.add('editing');t.contentEditable='true';t.focus();
   var r=document.createRange();r.selectNodeContents(t);var s=getSelection();s.removeAllRanges();s.addRange(r);
   function done(){
     t.removeEventListener('blur',done);t.contentEditable='false';el.classList.remove('editing');
-    var v=t.innerText.replace(/ /g,' ').trim(),n=notes.get(id);if(!n)return;
+    var v=bul(t.innerText.replace(/ /g,' ')).trim(),n=notes.get(id);if(!n)return;
     if(!v){if(!n.text)hardDelete(id);else t.textContent=n.text;return}
     if(v!==n.text)save(id,{text:v});
   }
@@ -575,7 +577,7 @@ function updateNote(el,n){
   }
 }
 function sizeFont(el,n,w,h){
-  var L=(n.text||'').length,b=L<=40?17:L<=80?15:L<=120?13.5:12;
+  var L=(n.text||'').length,b=L<=40?14:L<=80?13:L<=120?12:11;
   if(!n.img){var f=Math.max(.8,Math.min(2.2,Math.sqrt((w*h)/(150*150))));b=Math.round(b*f*10)/10}
   el.style.fontSize=b+'px';
 }
@@ -808,7 +810,7 @@ function renderFrame(L){
   list.forEach(function(n){
     var d=document.createElement('div');d.className='ovp'+(n.arch?' oarch':'');d.style.backgroundColor=col_(n.color)[0];
     d.innerHTML='<div class="tools"><button class="b-ed" title="Modifier">✎</button><button class="b-col" title="Changer de thème">◐</button><button class="b-who" title="Collaborateurs concernés">👤</button><button class="b-arch" title="'+(n.arch?'Désarchiver':'Archiver')+'">✓</button><button class="b-del" title="Supprimer">×</button></div><div class="otxt"></div>';
-    var tx=$('.otxt',d);tx.textContent=n.text;var Ln=(n.text||'').length;d.style.fontSize=Ln<=40?'17px':Ln<=80?'15px':Ln<=120?'13.5px':'12px';
+    var tx=$('.otxt',d);tx.textContent=n.text;var Ln=(n.text||'').length;d.style.fontSize=Ln<=40?'14px':Ln<=80?'13px':Ln<=120?'12px':'11px';
     var wl=(n.who||[]).map(function(pid){var q=boards.get(pid);return q&&q.pers&&!q.del?ini(q.name||'?'):null}).filter(Boolean);
     if(wl.length){var wh=document.createElement('div');wh.className='whos';wh.innerHTML=wl.slice(0,6).map(function(x){return '<i>'+x.replace(/[<>&"]/g,'')+'</i>'}).join('')+(wl.length>6?'<i>+'+(wl.length-6)+'</i>':'');d.appendChild(wh)}
     var tl=$('.tools',d);
@@ -816,7 +818,7 @@ function renderFrame(L){
     $('.b-ed',d).onclick=function(e){
       e.stopPropagation();tx.contentEditable='true';tx.focus();
       var r=document.createRange();r.selectNodeContents(tx);var sl=getSelection();sl.removeAllRanges();sl.addRange(r);
-      function done(){tx.removeEventListener('blur',done);tx.contentEditable='false';var v=tx.innerText.trim(),nn=notes.get(n.id);if(!nn)return;if(v&&v!==nn.text)save(n.id,{text:v});else{L.sig='';renderFrame(L)}}
+      function done(){tx.removeEventListener('blur',done);tx.contentEditable='false';var v=bul(tx.innerText).trim(),nn=notes.get(n.id);if(!nn)return;if(v&&v!==nn.text)save(n.id,{text:v});else{L.sig='';renderFrame(L)}}
       tx.addEventListener('blur',done);
       tx.onkeydown=function(ev){ev.stopPropagation();if((ev.key==='Enter'&&!ev.shiftKey)||ev.key==='Escape'){ev.preventDefault();tx.blur()}};
     };
