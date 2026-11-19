@@ -254,6 +254,13 @@ html[data-theme=dark] .tmenu select.tbtn{background-color:#141a2a}
 html[data-theme=dark] .zwho .zw{background:rgba(236,239,246,.16);color:#eceff6}
 html[data-theme=dark] .zwho .zwadd{color:#eceff6;border-color:rgba(236,239,246,.45)}
 .ovp.oarch{opacity:.5;filter:saturate(.5)}
+.ovp{position:relative}
+.ovp:hover .tools{opacity:1}
+.ovp .tools button{color:#14213D}
+.ovp .tools .arm,.ovp .tools .arm:hover{color:#fff;background:#c0392b}
+.ovp .otxt{outline:none;max-height:100%;overflow:hidden}
+.ovp .otxt[contenteditable=true]{cursor:text!important;user-select:text;overflow:auto}
+.ovp .whos{left:12px;bottom:6px;right:12px}
 </style>
 </head>
 <body>
@@ -287,7 +294,7 @@ var DEFAULT_FRAMES=[{id:'c1',t:'Idées'},{id:'c2',t:'À explorer'},{id:'c3',t:'E
 var RET=Infinity, boards=new Map(), cur='main', bcol=null, trash=new Map(), mtrash=new Map();
 function bdoc(b){var d=boards.get(b);if(d&&d.frames&&d.frames.length)return d;if(b==='main')return {name:(d&&d.name)||'Mon tableau',frames:DEFAULT_FRAMES};return d||{name:'Tableau',frames:[{id:'c1',t:'Cadre 1'}]}}
 function frames(){return bdoc(cur).frames}
-var ROWH=800;
+var ROWH=624;
 function cellOf(f,i){return {c:f.c!=null?f.c:i,r:f.r||0}}
 function laidOut(fr){return fr.map(function(f,i){var p=cellOf(f,i);return {id:f.id,t:f.t,c:p.c,r:p.r}})}
 function frameIdxOf(n){
@@ -380,7 +387,7 @@ function create(data,L){
 function slotTop(frame){
   var i=frames().findIndex(function(f){return f.id===frame});if(i<0)i=0;
   var cp=cellOf(frames()[i]||{},i),x0=cp.c*388+24,y0=cp.r*ROWH;
-  for(var r=0;r<4;r++)for(var c=0;c<2;c++){
+  for(var r=0;r<3;r++)for(var c=0;c<2;c++){
     var x=x0+c*166,y=y0+56+r*166;
     var taken=false;notes.forEach(function(n){if(!n.parent&&inBoard(n)&&Math.abs(n.x-x)<60&&Math.abs(n.y-y)<60)taken=true});
     if(!taken)return{x:x,y:y};
@@ -792,11 +799,32 @@ function renderFrame(L){
   var i=frames().findIndex(function(f){return f.id===L.frame});
   var list=[];notes.forEach(function(n){if(!n.parent&&inBoard(n)&&frameIdxOf(n)===i)list.push(n)});
   list.sort(function(a,b){return (a.arch?1:0)-(b.arch?1:0)||a.y-b.y||a.x-b.x});
-  var sig=list.map(function(n){return n.id+'|'+n.text+'|'+n.color+'|'+(n.arch?1:0)}).join('§');
-  if(L.sig===sig)return;L.sig=sig;L.ovl.textContent='';
+  var names=function(n){return (n.who||[]).map(function(pid){var d=boards.get(pid);return d&&d.pers&&!d.del?ini(d.name||'?'):''}).join('')};
+  var sig=list.map(function(n){return n.id+'|'+n.text+'|'+n.color+'|'+(n.arch?1:0)+'|'+names(n)}).join('§');
+  if(L.sig===sig)return;
+  if(L.ovl.querySelector('.otxt[contenteditable=true]'))return;
+  L.sig=sig;L.ovl.textContent='';
   if(!list.length){var e=document.createElement('div');e.className='mempty';e.textContent='Aucun post-it dans ce cadre.';L.ovl.appendChild(e);return}
   list.forEach(function(n){
-    var d=document.createElement('div');d.className='ovp'+(n.arch?' oarch':'');d.style.backgroundColor=col_(n.color)[0];d.textContent=n.text;var Ln=(n.text||'').length;d.style.fontSize=Ln<=40?'17px':Ln<=80?'15px':Ln<=120?'13.5px':'12px';
+    var d=document.createElement('div');d.className='ovp'+(n.arch?' oarch':'');d.style.backgroundColor=col_(n.color)[0];
+    d.innerHTML='<div class="tools"><button class="b-ed" title="Modifier">✎</button><button class="b-col" title="Changer de thème">◐</button><button class="b-who" title="Collaborateurs concernés">👤</button><button class="b-arch" title="'+(n.arch?'Désarchiver':'Archiver')+'">✓</button><button class="b-del" title="Supprimer">×</button></div><div class="otxt"></div>';
+    var tx=$('.otxt',d);tx.textContent=n.text;var Ln=(n.text||'').length;d.style.fontSize=Ln<=40?'17px':Ln<=80?'15px':Ln<=120?'13.5px':'12px';
+    var wl=(n.who||[]).map(function(pid){var q=boards.get(pid);return q&&q.pers&&!q.del?ini(q.name||'?'):null}).filter(Boolean);
+    if(wl.length){var wh=document.createElement('div');wh.className='whos';wh.innerHTML=wl.slice(0,6).map(function(x){return '<i>'+x.replace(/[<>&"]/g,'')+'</i>'}).join('')+(wl.length>6?'<i>+'+(wl.length-6)+'</i>':'');d.appendChild(wh)}
+    var tl=$('.tools',d);
+    ['pointerdown','click','dblclick'].forEach(function(ev){tl.addEventListener(ev,function(e){e.stopPropagation()})});
+    $('.b-ed',d).onclick=function(e){
+      e.stopPropagation();tx.contentEditable='true';tx.focus();
+      var r=document.createRange();r.selectNodeContents(tx);var sl=getSelection();sl.removeAllRanges();sl.addRange(r);
+      function done(){tx.removeEventListener('blur',done);tx.contentEditable='false';var v=tx.innerText.trim(),nn=notes.get(n.id);if(!nn)return;if(v&&v!==nn.text)save(n.id,{text:v});else{L.sig='';renderFrame(L)}}
+      tx.addEventListener('blur',done);
+      tx.onkeydown=function(ev){ev.stopPropagation();if((ev.key==='Enter'&&!ev.shiftKey)||ev.key==='Escape'){ev.preventDefault();tx.blur()}};
+    };
+    $('.b-col',d).onclick=function(e){e.stopPropagation();var nn=notes.get(n.id);if(!nn)return;var k=KEYS.indexOf(nn.color);save(n.id,{color:KEYS[(k+1)%KEYS.length]})};
+    $('.b-arch',d).onclick=function(e){e.stopPropagation();var nn=notes.get(n.id);if(!nn)return;save(n.id,{arch:nn.arch?0:Date.now()})};
+    $('.b-who',d).onclick=function(e){e.stopPropagation();whoPop(n.id,e.currentTarget)};
+    var del=$('.b-del',d);
+    del.onclick=function(e){e.stopPropagation();if(del.classList.contains('arm')){remove(n.id);return}del.classList.add('arm');del.textContent='Supprimer ?';setTimeout(function(){del.classList.remove('arm');del.textContent='×'},2200)};
     d.onclick=function(){openNote(n.id,d)};L.ovl.appendChild(d);
   });
 }
@@ -862,25 +890,53 @@ function saveBoard(b){
   if(bcol)bcol.doc(b).set(o).catch(function(){toast('Enregistrement impossible')});
 }
 var frameMoved=false;
-function moveFrameTo(i,tc,tr){
-  var d=bdoc(cur),lf=laidOut(d.frames),p0=lf[i],other=-1;
-  if(!p0||(p0.c===tc&&p0.r===tr))return;
-  lf.forEach(function(f,k){if(k!==i&&f.c===tc&&f.r===tr)other=k});
-  var dc=tc-p0.c,dr=tr-p0.r,todo=[];
-  function collect(n,id){if(n.parent||(n.board||'main')!==cur)return;var k=frameIdxOf(n);if(k===i||k===other)todo.push([n,id,k])}
+function arrangeFrame(fid){
+  var i=frames().findIndex(function(f){return f.id===fid});if(i<0)return;
+  var list=[];notes.forEach(function(n){if(!n.parent&&inBoard(n)&&frameIdxOf(n)===i)list.push(n)});
+  if(!list.length){toast('Rien à ranger dans ce cadre');return}
+  list.sort(function(a,b){return (a.arch?1:0)-(b.arch?1:0)||(Math.round(a.y/80)-Math.round(b.y/80))||(a.x-b.x)});
+  var cp=cellOf(frames()[i],i),rows=Math.ceil(list.length/2),step=rows>3?Math.max(40,(600-56-150-20)/(rows-1)):166;
+  list.forEach(function(n,k){save(n.id,{x:cp.c*388+24+(k%2)*166,y:Math.round(cp.r*ROWH+56+Math.floor(k/2)*step),rot:0})});
+  toast('Post-its rangés');
+}
+function byC(lf){return function(a,b){return lf[a].c-lf[b].c}}
+function compactRows(lf){
+  var rows={};lf.forEach(function(f,k){(rows[f.r]=rows[f.r]||[]).push(k)});
+  Object.keys(rows).forEach(function(r){rows[r].sort(byC(lf)).forEach(function(k,j){lf[k].c=j})});
+}
+function layoutAfterMove(lf0,i,tc,tr){
+  var lf=lf0.map(function(f){return {id:f.id,t:f.t,c:f.c,r:f.r}}),me=lf[i];
+  me.r=-1;compactRows(lf);
+  var rowK=[];lf.forEach(function(f,k){if(k!==i&&f.r===tr)rowK.push(k)});
+  rowK.sort(byC(lf));
+  var pos=Math.min(tc,rowK.length);
+  rowK.forEach(function(k,j){lf[k].c=j>=pos?j+1:j});
+  me.r=tr;me.c=pos;
+  return lf;
+}
+function relocate(oldLf,newLf){
+  var by={};newLf.forEach(function(f){by[f.id]=f});
+  var todo=[];
+  function collect(n,id){if(n.parent||(n.board||'main')!==cur)return;var k=frameIdxOf(n);if(k<0)return;var o=oldLf[k],nw=by[o.id];if(!nw)return;
+    var dx=(nw.c-o.c)*388,dy=(nw.r-o.r)*ROWH;if(dx||dy)todo.push([n,id,dx,dy])}
   notes.forEach(collect);trash.forEach(collect);
-  todo.forEach(function(t){var n=t[0],sg=t[2]===i?1:-1;n.x+=sg*dc*388;n.y+=sg*dr*ROWH;chainWrite(col,t[1],t[1],{x:n.x,y:n.y})});
-  var oc=p0.c,or=p0.r;lf[i].c=tc;lf[i].r=tr;if(other>=0){lf[other].c=oc;lf[other].r=or}
-  boards.set(cur,{name:d.name,frames:lf,ts:d.ts||Date.now()});saveBoard(cur);
+  todo.forEach(function(t){t[0].x+=t[2];t[0].y+=t[3];chainWrite(col,t[1],t[1],{x:t[0].x,y:t[0].y})});
+}
+function moveFrameTo(i,tc,tr){
+  var d=bdoc(cur),lf0=laidOut(d.frames);if(!lf0[i])return;
+  var lf1=layoutAfterMove(lf0,i,tc,tr);
+  if(lf1.every(function(f,k){return f.c===lf0[k].c&&f.r===lf0[k].r}))return;
+  relocate(lf0,lf1);
+  boards.set(cur,{name:d.name,frames:lf1,ts:d.ts||Date.now()});saveBoard(cur);
 }
 function frameDrag(d,i){
   d.addEventListener('pointerdown',function(e){
     if(e.button>0||e.target.closest('button'))return;
-    var fr=frames(),p0=cellOf(fr[i],i),sx=e.clientX,sy=e.clientY,moved=false,tc=p0.c,tr=p0.r,fe=$$('.frame',board),sc=L0.scale||1;
+    var fr=frames(),lf0=laidOut(fr),p0=lf0[i],sx=e.clientX,sy=e.clientY,moved=false,tc=p0.c,tr=p0.r,fe=$$('.frame',board),sc=L0.scale||1;
     function apply(dx,dy){
       tc=Math.max(0,Math.round(p0.c+dx/388));tr=Math.max(0,Math.round(p0.r+dy/ROWH));
-      var other=-1;fr.forEach(function(f,k){if(k!==i){var q=cellOf(f,k);if(q.c===tc&&q.r===tr)other=k}});
-      function off(k){return k===i?[dx,dy]:k===other?[(p0.c-tc)*388,(p0.r-tr)*ROWH]:[0,0]}
+      var nl=layoutAfterMove(lf0,i,tc,tr);
+      function off(k){return k===i?[dx,dy]:[(nl[k].c-lf0[k].c)*388,(nl[k].r-lf0[k].r)*ROWH]}
       fe.forEach(function(el,k){var o=off(k);el.style.translate=o[0]+'px '+o[1]+'px'});
       L0.els.forEach(function(el,id){var nn=notes.get(id);if(!nn)return;var k=frameIdxOf(nn),o=off(k);el.classList.toggle('fshift',k!==i);el.style.translate=o[0]+'px '+o[1]+'px'});
     }
@@ -904,7 +960,8 @@ function fitFrames(){
   fe.forEach(function(el,k){var h=Math.max(600,Math.min(ROWH-40,bot[k]));if(el._h!==h){el._h=h;el.style.height=h+'px'}});
 }
 function deleteFrame(i){
-  var d=bdoc(cur),nf=laidOut(d.frames).filter(function(_,k){return k!==i});
+  var d=bdoc(cur),lf0=laidOut(d.frames),nf=lf0.filter(function(_,k){return k!==i}).map(function(f){return {id:f.id,t:f.t,c:f.c,r:f.r}});
+  compactRows(nf);relocate(lf0,nf);
   boards.set(cur,{name:d.name,frames:nf,ts:d.ts||Date.now()});saveBoard(cur);buildBoard();
 }
 function buildBoard(){
@@ -1116,6 +1173,8 @@ function whoPop(id,btn){
   $('#bsel').addEventListener('change',function(){mn.classList.remove('on')});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')mn.classList.remove('on')});
 })();
+/* Hypothèse : sur certains Mac, le curseur « main » est perdu quand la souris reste immobile. Un micro-changement de mise en page invisible, toutes les 300 ms, force le navigateur à recalculer le curseur sous la souris. */
+(function(){var t=document.createElement('div');t.style.cssText='position:fixed;left:-20px;top:-20px;width:1px;height:1px;pointer-events:none;opacity:0';document.body.appendChild(t);var w=1;setInterval(function(){w=w===1?2:1;t.style.width=w+'px'},300)})();
 async function localDb(){
   try{
     var r,j;
