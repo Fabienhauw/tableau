@@ -991,12 +991,41 @@ function moveFrameBoard(i,target){
 $('#hidbtn').onclick=function(){$('#tmenu').classList.remove('on');switchBoard(cur===HID?'main':HID)};
 function vnum(v){return String(v).split('.').map(function(x){return parseInt(x,10)||0})}
 function vgt(a,b){a=vnum(a);b=vnum(b);for(var i=0;i<3;i++){if((a[i]||0)!==(b[i]||0))return (a[i]||0)>(b[i]||0)}return false}
+function backupData(){
+  fetch('/api/data').then(function(r){return r.json()}).then(function(j){
+    var d=new Date(),p=function(x){return String(x).padStart(2,'0')},nm='tableau-sauvegarde-'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'.json';
+    var n=0;Object.keys(j.data||{}).forEach(function(c){n+=Object.keys(j.data[c]).length});
+    var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({tableau:1,date:d.toISOString(),data:j.data})],{type:'application/json'}));
+    a.download=nm;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);
+    toast('Sauvegarde créée ('+n+' éléments) : '+nm);
+  }).catch(function(){toast('Sauvegarde impossible')});
+}
+function restoreData(btn){
+  var inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
+  inp.onchange=function(){
+    var f=inp.files&&inp.files[0];if(!f)return;
+    f.text().then(function(t){
+      var j=JSON.parse(t),D=j&&j.data;if(!D||j.tableau!==1)throw 0;
+      var ops=[];['postits','meetings','boards'].forEach(function(c){Object.keys(D[c]||{}).forEach(function(id){ops.push({op:'set',col:c,id:id,data:D[c][id]})})});
+      if(!ops.length)throw 0;
+      btn.textContent='Confirmer : '+ops.length+' éléments';
+      btn.onclick=function(){btn.onclick=null;btn.disabled=true;run()};
+      function run(){var k=0;(function next(){
+        if(k>=ops.length){toast('Restauré ('+ops.length+' éléments). Rechargement…');setTimeout(function(){location.reload()},900);return}
+        fetch('/api/op',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ops[k++])}).then(function(r){if(!r.ok)throw 0;next()}).catch(function(){toast('Restauration interrompue à '+k+'/'+ops.length)});
+      })()}
+    }).catch(function(){toast('Fichier de sauvegarde non reconnu')});
+  };
+  inp.click();
+}
 function updPop(title,msg,gh){
   var o=document.createElement('div');o.className='updpop';
   o.innerHTML='<div><h3></h3><p style="margin:0"></p><div class="btns"></div></div>';
   $('h3',o).textContent=title;$('p',o).textContent=msg;
   var b=$('.btns',o);
   if(gh){var g=document.createElement('button');g.className='tbtn';g.textContent='Ouvrir GitHub';g.onclick=function(){window.open(REPO,'_blank');o.remove()};b.appendChild(g)}
+  var sv=document.createElement('button');sv.className='tbtn';sv.textContent='💾 Sauvegarder mes données';sv.onclick=backupData;b.insertBefore(sv,b.firstChild);
+  var rs=document.createElement('button');rs.className='tbtn';rs.textContent='Restaurer…';rs.onclick=function(){restoreData(rs)};b.insertBefore(rs,sv.nextSibling);
   var c=document.createElement('button');c.className='tbtn';c.textContent='Fermer';c.onclick=function(){o.remove()};b.appendChild(c);
   o.onclick=function(e){if(e.target===o)o.remove()};document.body.appendChild(o);
 }
@@ -1004,8 +1033,8 @@ $('#updbtn').onclick=function(){
   $('#tmenu').classList.remove('on');
   fetch(RAWIDX+'?t='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.text()}).then(function(t){
     var m=/var APPVER='([0-9.]+)'/.exec(t);if(!m)throw 0;
-    if(vgt(m[1],APPVER))updPop('Nouvelle version disponible','Installée : '+APPVER+' · Disponible : '+m[1]+'. Récupère-la sur GitHub et remplace seulement le fichier index.html : tes post-its, cadres et réunions sont dans le dossier donnees et sont conservés.',true);
-    else updPop('À jour ✓','Version installée : '+APPVER+'. Tes données (post-its, cadres, réunions) sont dans le dossier donnees, indépendantes de l’application.',false);
+    if(vgt(m[1],APPVER))updPop('Nouvelle version disponible','Installée : '+APPVER+' · Disponible : '+m[1]+'. Avant de l’installer, sauvegarde tes données (bouton ci-dessous, ou copie le dossier donnees). Remplace ensuite seulement le fichier index.html : tes post-its, cadres et réunions sont dans le dossier donnees et sont conservés.',true);
+    else updPop('À jour ✓','Version installée : '+APPVER+'. Pense à sauvegarder tes données avant toute mise à jour : elles sont dans le dossier donnees, indépendantes de l’application.',false);
   }).catch(function(){updPop('Vérification impossible','Pas de connexion ou GitHub injoignable. Tu peux consulter la page du projet.',true)});
 };
 function buildBoard(){
