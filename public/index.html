@@ -1004,8 +1004,8 @@ $('#updbtn').onclick=function(){
   $('#tmenu').classList.remove('on');
   fetch(RAWIDX+'?t='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.text()}).then(function(t){
     var m=/var APPVER='([0-9.]+)'/.exec(t);if(!m)throw 0;
-    if(vgt(m[1],APPVER))updPop('Nouvelle version disponible','Installée : '+APPVER+' · Disponible : '+m[1]+'. Récupère-la sur GitHub (tes données ne changent pas).',true);
-    else updPop('À jour ✓','Version installée : '+APPVER+'.',false);
+    if(vgt(m[1],APPVER))updPop('Nouvelle version disponible','Installée : '+APPVER+' · Disponible : '+m[1]+'. Récupère-la sur GitHub et remplace seulement le fichier index.html : tes post-its, cadres et réunions sont dans le dossier donnees et sont conservés.',true);
+    else updPop('À jour ✓','Version installée : '+APPVER+'. Tes données (post-its, cadres, réunions) sont dans le dossier donnees, indépendantes de l’application.',false);
   }).catch(function(){updPop('Vérification impossible','Pas de connexion ou GitHub injoignable. Tu peux consulter la page du projet.',true)});
 };
 function buildBoard(){
