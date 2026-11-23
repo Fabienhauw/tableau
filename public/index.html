@@ -64,7 +64,13 @@ h1{margin:0;font-size:38px;letter-spacing:-.5px;font-weight:700}
 
 .fb{display:flex;gap:6px;align-items:center}
 .fdel{width:30px;height:30px;border-radius:50%;border:none;background:rgba(20,33,61,.08);color:#14213D;cursor:pointer;opacity:0;transition:opacity .12s;font-size:16px;line-height:1;padding:0}
-.frame:hover .fdel{opacity:1}
+.frame:hover .fdel,.frame:hover .fhid{opacity:1}
+.fhid{width:30px;height:30px;border-radius:50%;border:none;background:rgba(20,33,61,.08);color:#14213D;cursor:pointer;opacity:0;transition:opacity .12s;font-size:14px;line-height:1;padding:0;margin-right:6px}
+html[data-theme=dark] .fhid{background:rgba(255,255,255,.12);color:#eceff6}
+.updpop{position:fixed;inset:0;z-index:200;background:rgba(20,33,61,.35);display:flex;align-items:center;justify-content:center}
+.updpop>div{background:#fff;color:#14213D;border-radius:18px;padding:22px 26px;min-width:300px;max-width:420px;box-shadow:0 18px 50px rgba(20,33,61,.35);font-size:14px;line-height:1.45}
+.updpop h3{margin:0 0 10px;font-size:17px}.updpop .btns{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+html[data-theme=dark] .updpop>div{background:#1d2538;color:#eceff6}
 .frame{transition:translate .16s}
 .frame.fdrag{transition:none;z-index:30;box-shadow:0 18px 40px rgba(20,33,61,.25);cursor:grabbing}
 .frame.fdrag *{cursor:grabbing!important}
@@ -270,7 +276,7 @@ html[data-theme=dark] .zwho .zwadd{color:#eceff6;border-color:rgba(236,239,246,.
   <header>
     <h1 id="bname" title="Cliquer pour renommer le tableau">Mon tableau</h1>
     <p class="sub">Dis-moi une idée, je la pose au bon endroit.</p>
-    <div class="topbar"><button class="tbtn" id="menubtn" title="Menu" aria-label="Menu">☰</button><div class="tmenu" id="tmenu"><select class="tbtn" id="bsel" title="Changer de tableau"></select><button class="tbtn" id="bnew">+ Nouveau tableau</button><button class="tbtn" id="bdel" title="Supprimer ce tableau (récupérable dans la corbeille)" style="display:none">Supprimer ce tableau</button><button class="tbtn" id="peoplebtn">👥 Collaborateurs</button><button class="tbtn" id="trashbtn">🗑 Corbeille</button></div></div><span id="zctl0"></span>
+    <div class="topbar"><button class="tbtn" id="menubtn" title="Menu" aria-label="Menu">☰</button><div class="tmenu" id="tmenu"><select class="tbtn" id="bsel" title="Changer de tableau"></select><button class="tbtn" id="bnew">+ Nouveau tableau</button><button class="tbtn" id="bdel" title="Supprimer ce tableau (récupérable dans la corbeille)" style="display:none">Supprimer ce tableau</button><button class="tbtn" id="peoplebtn">👥 Collaborateurs</button><button class="tbtn" id="hidbtn">🔒 Coffre</button><button class="tbtn" id="trashbtn">🗑 Corbeille</button><button class="tbtn" id="updbtn">⟳ Mise à jour</button></div></div><span id="zctl0"></span>
     <div class="legend" id="legend"></div>
     <div id="status"></div>
   </header>
@@ -292,8 +298,9 @@ var COLORS={
 };
 var KEYS=Object.keys(COLORS);
 var DEFAULT_FRAMES=[{id:'c1',t:'Idées'},{id:'c2',t:'À explorer'},{id:'c3',t:'En cours'}];
+var APPVER='1.3.0',HID='cache',REPO='https://github.com/Fabienhauw/tableau',RAWIDX='https://raw.githubusercontent.com/Fabienhauw/tableau/main/public/index.html';
 var RET=Infinity, boards=new Map(), cur='main', bcol=null, trash=new Map(), mtrash=new Map();
-function bdoc(b){var d=boards.get(b);if(d&&d.frames&&d.frames.length)return d;if(b==='main')return {name:(d&&d.name)||'Mon tableau',frames:DEFAULT_FRAMES};return d||{name:'Tableau',frames:[{id:'c1',t:'Cadre 1'}]}}
+function bdoc(b){var d=boards.get(b);if(d&&d.frames&&d.frames.length)return d;if(b==='main')return {name:(d&&d.name)||'Mon tableau',frames:DEFAULT_FRAMES};if(b===HID)return d||{name:'Coffre',frames:[]};return d||{name:'Tableau',frames:[{id:'c1',t:'Cadre 1'}]}}
 function frames(){return bdoc(cur).frames}
 var ROWH=624;
 function cellOf(f,i){return {c:f.c!=null?f.c:i,r:f.r||0}}
@@ -966,20 +973,57 @@ function deleteFrame(i){
   compactRows(nf);relocate(lf0,nf);
   boards.set(cur,{name:d.name,frames:nf,ts:d.ts||Date.now()});saveBoard(cur);buildBoard();
 }
+function moveFrameBoard(i,target){
+  var d=bdoc(cur),lf=laidOut(d.frames),f=lf[i];if(!f)return;
+  if(cur!==HID&&lf.length<=1){toast('Un tableau garde au moins un cadre');return}
+  var td=bdoc(target),tl=laidOut(td.frames),mc=-1;tl.forEach(function(q){if(q.r===0)mc=Math.max(mc,q.c)});
+  var nc=mc+1,nr=0,dx=(nc-f.c)*388,dy=(nr-f.r)*ROWH,src=cur;
+  var oldSc=src==='main'?'frame:'+f.id:'frame:'+src+':'+f.id,newSc=target==='main'?'frame:'+f.id:'frame:'+target+':'+f.id;
+  var mv=[];notes.forEach(function(n,id){if(!n.parent&&inBoard(n)&&frameIdxOf(n)===i)mv.push([id,n])});
+  mv.forEach(function(p){save(p[0],{board:target,x:(p[1].x||0)+dx,y:(p[1].y||0)+dy})});
+  meetings.forEach(function(m,mid){if(m.scope===oldSc)saveMeet(mid,{scope:newSc})});
+  var nf=lf.filter(function(_,k){return k!==i}).map(function(q){return {id:q.id,t:q.t,c:q.c,r:q.r}});
+  compactRows(nf);
+  boards.set(src,{name:d.name,frames:nf,ts:d.ts||Date.now()});saveBoard(src);
+  boards.set(target,{name:td.name,frames:tl.concat([{id:f.id,t:f.t,c:nc,r:nr}]),ts:td.ts||Date.now()});saveBoard(target);
+  buildBoard();toast(target===HID?'Cadre mis dans le coffre (🔒 dans le menu ☰)':'Cadre remis dans Mon tableau');
+}
+$('#hidbtn').onclick=function(){$('#tmenu').classList.remove('on');switchBoard(cur===HID?'main':HID)};
+function vnum(v){return String(v).split('.').map(function(x){return parseInt(x,10)||0})}
+function vgt(a,b){a=vnum(a);b=vnum(b);for(var i=0;i<3;i++){if((a[i]||0)!==(b[i]||0))return (a[i]||0)>(b[i]||0)}return false}
+function updPop(title,msg,gh){
+  var o=document.createElement('div');o.className='updpop';
+  o.innerHTML='<div><h3></h3><p style="margin:0"></p><div class="btns"></div></div>';
+  $('h3',o).textContent=title;$('p',o).textContent=msg;
+  var b=$('.btns',o);
+  if(gh){var g=document.createElement('button');g.className='tbtn';g.textContent='Ouvrir GitHub';g.onclick=function(){window.open(REPO,'_blank');o.remove()};b.appendChild(g)}
+  var c=document.createElement('button');c.className='tbtn';c.textContent='Fermer';c.onclick=function(){o.remove()};b.appendChild(c);
+  o.onclick=function(e){if(e.target===o)o.remove()};document.body.appendChild(o);
+}
+$('#updbtn').onclick=function(){
+  $('#tmenu').classList.remove('on');
+  fetch(RAWIDX+'?t='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.text()}).then(function(t){
+    var m=/var APPVER='([0-9.]+)'/.exec(t);if(!m)throw 0;
+    if(vgt(m[1],APPVER))updPop('Nouvelle version disponible','Installée : '+APPVER+' · Disponible : '+m[1]+'. Récupère-la sur GitHub (tes données ne changent pas).',true);
+    else updPop('À jour ✓','Version installée : '+APPVER+'.',false);
+  }).catch(function(){updPop('Vérification impossible','Pas de connexion ou GitHub injoignable. Tu peux consulter la page du projet.',true)});
+};
 function buildBoard(){
   L0.els.forEach(function(el){el.remove()});L0.els.clear();board.textContent='';
   var fr=frames();
   fr.forEach(function(f,i){
     var d=document.createElement('div');d.className='frame';var cp=cellOf(f,i);d.style.left=(cp.c*388)+'px';d.style.top=(cp.r*ROWH)+'px';
-    d.innerHTML='<div class="fh"><span class="ft"></span><span class="fb"><button class="fdel" title="Supprimer ce cadre (il doit être vide)">×</button><button class="add" title="Ajouter une note">+</button></span></div>';
+    d.innerHTML='<div class="fh"><span class="ft"></span><span class="fb"><button class="fhid">🔒</button><button class="fdel" title="Supprimer ce cadre (il doit être vide)">×</button><button class="add" title="Ajouter une note">+</button></span></div>';
     $('.ft',d).textContent=f.t;$('.ft',d).title='Ouvrir : vue d’ensemble et réunions';
     d.onclick=function(e){if(frameMoved||e.target.closest('button'))return;openFrame(f,d)};
     $('.add',d).onclick=function(){var s=slotTop(f.id);create({frame:f.id,parent:null,x:s.x,y:s.y},L0)};
     frameDrag(d,i);
+    var fhb=$('.fhid',d);fhb.title=cur===HID?'Sortir ce cadre du coffre (retour dans Mon tableau)':'Mettre ce cadre dans le coffre';if(cur===HID)fhb.textContent='↩';
+    fhb.onclick=function(e){e.stopPropagation();moveFrameBoard(i,cur===HID?'main':HID)};
     var fdb=$('.fdel',d);
     fdb.onclick=function(e){
       e.stopPropagation();
-      if(frames().length<=1){toast('Un tableau garde au moins un cadre');return}
+      if(cur!==HID&&frames().length<=1){toast('Un tableau garde au moins un cadre');return}
       var nn=0,nm=0,sc=scopeFrame(f.id);
       notes.forEach(function(n){if(!n.parent&&inBoard(n)&&frameIdxOf(n)===i)nn++});
       meetings.forEach(function(m){if(m.scope===sc)nm++});
@@ -1004,16 +1048,18 @@ function buildBoard(){
 function refreshSel(){
   var sel=$('#bsel');sel.textContent='';
   var list=[{id:'main',name:bdoc('main').name,ts:0}];
-  boards.forEach(function(d,id){if(id!=='main'&&!d.del&&!d.pers)list.push({id:id,name:d.name,ts:d.ts||0})});
+  boards.forEach(function(d,id){if(id!=='main'&&id!==HID&&!d.del&&!d.pers)list.push({id:id,name:d.name,ts:d.ts||0})});
   list.sort(function(a,b){return a.ts-b.ts});
   list.forEach(function(b){var o=document.createElement('option');o.value=b.id;o.textContent=b.name;sel.appendChild(o)});
-  sel.value=cur;
-  var bd=$('#bdel');if(bd)bd.style.display=cur==='main'?'none':'';
+  if(cur!==HID)sel.value=cur;
+  var bd=$('#bdel');if(bd)bd.style.display=(cur==='main'||cur===HID)?'none':'';
+  var hb=$('#hidbtn');if(hb)hb.textContent=cur===HID?'↩ Quitter le coffre':'🔒 Coffre';
 }
 function switchBoard(id){
   levels.slice(1).forEach(function(x){closeLevel(x,true)});
   cur=id;try{localStorage.setItem('tableau-board',id)}catch(e){}
   buildBoard();
+  var sc0=$('#scroller');if(sc0){sc0.scrollTop=0;sc0.scrollLeft=0}
 }
 $('#bsel').onchange=function(){switchBoard(this.value)};
 $('#bdel').onclick=function(){
